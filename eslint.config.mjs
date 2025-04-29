@@ -1,24 +1,21 @@
-import js from '@eslint/js';
-import globals from 'globals';
-import tseslint from '@typescript-eslint/eslint-plugin';
-import pluginReact from 'eslint-plugin-react';
 import { defineConfig } from 'eslint/config';
+import tseslint from 'typescript-eslint';
+import pluginReact from 'eslint-plugin-react';
 
 export default defineConfig([
   {
     files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'],
-    plugins: {
-      'eslint-plugin-react': pluginReact, // Thêm plugin react
-      '@typescript-eslint': tseslint, // Thêm plugin TypeScript
-    },
+    plugins: ['@typescript-eslint', pluginReact],
     extends: [
-      'plugin:@typescript-eslint/recommended', // Cấu hình chuẩn TypeScript
-      'plugin:react/recommended', // Cấu hình chuẩn React
+      'eslint:recommended',
+      'plugin:@typescript-eslint/recommended', 
+      'plugin:react/recommended',
     ],
-  },
-  {
-    files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'],
-    languageOptions: { globals: globals.browser },
+    parser: '@typescript-eslint/parser', 
+    parserOptions: {
+      ecmaVersion: 2020,
+      sourceType: 'module',
+    },
   },
   {
     settings: {
