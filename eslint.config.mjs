@@ -1,27 +1,19 @@
-import { defineConfig } from 'eslint/config';
+import js from '@eslint/js';
+import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import pluginReact from 'eslint-plugin-react';
+import { defineConfig } from 'eslint/config';
 
 export default defineConfig([
   {
     files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'],
-    plugins: ['@typescript-eslint', pluginReact],
-    extends: [
-      'eslint:recommended',
-      'plugin:@typescript-eslint/recommended', 
-      'plugin:react/recommended',
-    ],
-    parser: '@typescript-eslint/parser', 
-    parserOptions: {
-      ecmaVersion: 2020,
-      sourceType: 'module',
-    },
+    plugins: { js },
+    extends: ['js/recommended'],
   },
   {
-    settings: {
-      react: {
-        version: 'detect',
-      },
-    },
+    files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'],
+    languageOptions: { globals: globals.browser },
   },
+  tseslint.configs.recommended,
+  pluginReact.configs.flat.recommended,
 ]);
