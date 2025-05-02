@@ -1,6 +1,5 @@
 # Software-Integration-Final-Project
 
-
 ## Commit Convention
 
 This project follows the [Conventional Commits](https://www.conventionalcommits.org/) specification for commit messages. All commit messages must follow this format:
@@ -9,9 +8,10 @@ This project follows the [Conventional Commits](https://www.conventionalcommits.
 <type>: <description>
 ```
 
-* Recommended types: ['build', 'chore', 'ci', 'docs', 'feat', 'fix', 'perf', 'refactor', 'revert', 'style', 'test']
+- Recommended types: ['build', 'chore', 'ci', 'docs', 'feat', 'fix', 'perf', 'refactor', 'revert', 'style', 'test']
 
 For example:
+
 ```
 chore: set up lint and prettier
 docs: update installation instructions
