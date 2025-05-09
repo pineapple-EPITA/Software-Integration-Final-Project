@@ -28,7 +28,7 @@ declare global {
 declare module 'express-session' {
   interface SessionData {
     user?: {
-      _id?: string;
+      _id: string;
       id?: string;
       email: string;
     };
@@ -36,10 +36,14 @@ declare module 'express-session' {
 }
 
 interface CustomRequest extends Request {
-  session: Session & Partial<SessionData>;
+  session: Session & {
+    user?: {
+      _id: string;
+      email: string;
+    };
+  };
   user?: {
-    _id?: string;
-    id?: string;
+    _id: string;
     email: string;
   };
 }
@@ -56,4 +60,5 @@ export interface UserSession extends Session {
   destroy: (callback?: (err: any) => void) => void;
 }
 
+export { CustomRequest };
 export type { Request, Response, NextFunction }; 
