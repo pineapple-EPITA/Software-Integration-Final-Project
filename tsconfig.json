@@ -19,7 +19,9 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "typeRoots": ["./node_modules/@types", "./src/types.d.ts"],
+    "types": ["node", "jest"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

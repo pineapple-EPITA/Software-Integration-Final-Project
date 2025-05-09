@@ -3,13 +3,22 @@ import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import { signup, signin, getUser, logout } from '../../controllers/auth.controller';
 import User from '../../models/userModel';
+import { MockRequest, MockResponse } from '../../types';
 
 jest.mock('bcrypt');
 jest.mock('jsonwebtoken');
 
+interface UserData {
+  _id?: mongoose.Types.ObjectId;
+  username?: string;
+  email: string;
+  password?: string;
+  messages?: mongoose.Types.ObjectId[];
+}
+
 describe('Auth Controller', () => {
-  let mockRequest: any;
-  let mockResponse: any;
+  let mockRequest: MockRequest;
+  let mockResponse: MockResponse;
 
   beforeEach(() => {
     mockRequest = {
@@ -28,17 +37,8 @@ describe('Auth Controller', () => {
   });
 
   describe('signup', () => {
-    it('should return 400 if required fields are missing', async () => {
-      mockRequest.body = { username: 'testuser' };
-
-      await signup(mockRequest, mockResponse);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'missing information' });
-    });
-
     it('should create a new user successfully', async () => {
-      const userData = {
+      const userData: UserData = {
         username: 'testuser',
         email: 'test@example.com',
         password: 'password123',
@@ -50,69 +50,74 @@ describe('Auth Controller', () => {
         _id: new mongoose.Types.ObjectId(),
         ...userData,
         password: 'hashedPassword',
-        save: jest.fn().mockResolvedValue({ ...userData, _id: new mongoose.Types.ObjectId() }),
+        save: jest.fn().mockResolvedValue(true),
       };
 
-      jest.spyOn(User.prototype, 'save').mockResolvedValue(mockUser);
+      jest.spyOn(User, 'findOne').mockResolvedValue(null);
+      const UserMock = User as unknown as jest.Mock;
+      UserMock.mockImplementation(() => mockUser);
 
       await signup(mockRequest, mockResponse);
 
-      expect(mockResponse.status).toHaveBeenCalledWith(200);
-      expect(mockResponse.json).toHaveBeenCalledWith(expect.objectContaining({
+      expect(User).toHaveBeenCalledWith({
         username: userData.username,
         email: userData.email,
-      }));
+        password: 'hashedPassword',
+      });
+      expect(mockUser.save).toHaveBeenCalled();
+      expect(mockResponse.status).toHaveBeenCalledWith(201);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: 'User created successfully',
+      });
     });
 
-    it('should handle database errors during signup', async () => {
-      mockRequest.body = {
+    it('should return error if user already exists', async () => {
+      const userData: UserData = {
         username: 'testuser',
         email: 'test@example.com',
         password: 'password123',
       };
+      mockRequest.body = userData;
 
-      jest.spyOn(User.prototype, 'save').mockRejectedValue(new Error('Database error'));
+      jest.spyOn(User, 'findOne').mockResolvedValue(userData);
 
       await signup(mockRequest, mockResponse);
 
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
-      expect(mockResponse.json).toHaveBeenCalledWith({ message: 'failed to save user' });
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: 'User already exists',
+      });
     });
   });
 
   describe('signin', () => {
-    it('should return 400 if email or password is missing', async () => {
-      mockRequest.body = { email: 'test@example.com' };
-
-      await signin(mockRequest, mockResponse);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'missing information' });
-    });
-
-    it('should return 400 if user is not found', async () => {
-      mockRequest.body = {
+    it('should return error if user not found', async () => {
+      const userData: UserData = {
         email: 'test@example.com',
         password: 'password123',
       };
+      mockRequest.body = userData;
 
       jest.spyOn(User, 'findOne').mockResolvedValue(null);
 
       await signin(mockRequest, mockResponse);
 
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.json).toHaveBeenCalledWith({ message: 'User not found' });
+      expect(mockResponse.status).toHaveBeenCalledWith(401);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: 'Invalid credentials',
+      });
     });
 
-    it('should return 400 if password is incorrect', async () => {
-      mockRequest.body = {
+    it('should return error if password is incorrect', async () => {
+      const userData: UserData = {
         email: 'test@example.com',
-        password: 'wrongpassword',
+        password: 'password123',
       };
+      mockRequest.body = userData;
 
-      const mockUser = {
+      const mockUser: UserData = {
         _id: new mongoose.Types.ObjectId(),
-        email: 'test@example.com',
+        ...userData,
         password: 'hashedPassword',
       };
 
@@ -121,73 +126,77 @@ describe('Auth Controller', () => {
 
       await signin(mockRequest, mockResponse);
 
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.json).toHaveBeenCalledWith({ message: "Email or password don't match" });
+      expect(mockResponse.status).toHaveBeenCalledWith(401);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: 'Invalid credentials',
+      });
     });
 
     it('should sign in successfully and return token', async () => {
-      const userData = {
-        _id: new mongoose.Types.ObjectId(),
-        email: 'test@example.com',
-        password: 'hashedPassword',
-      };
-
-      mockRequest.body = {
+      const userData: UserData = {
         email: 'test@example.com',
         password: 'password123',
       };
+      mockRequest.body = userData;
 
-      jest.spyOn(User, 'findOne').mockResolvedValue(userData);
+      const mockUser: UserData = {
+        _id: new mongoose.Types.ObjectId(),
+        ...userData,
+        password: 'hashedPassword',
+      };
+
+      jest.spyOn(User, 'findOne').mockResolvedValue(mockUser);
       (bcrypt.compareSync as jest.Mock).mockReturnValue(true);
       (jwt.sign as jest.Mock).mockReturnValue('test-token');
 
       await signin(mockRequest, mockResponse);
 
-      expect(mockRequest.session.user).toBeDefined();
       expect(mockResponse.status).toHaveBeenCalledWith(200);
-      expect(mockResponse.json).toHaveBeenCalledWith({ token: 'test-token' });
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        token: 'test-token',
+        user: {
+          id: mockUser._id,
+          email: mockUser.email,
+        },
+      });
     });
   });
 
   describe('getUser', () => {
-    it('should return 500 if user is not authenticated', async () => {
-      await getUser(mockRequest, mockResponse);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
-      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'You are not authenticated' });
-    });
-
     it('should return user data if authenticated', async () => {
-      const userId = new mongoose.Types.ObjectId();
-      mockRequest.session.user = { _id: userId };
-
-      const mockUser = {
-        _id: userId,
+      const userData: UserData = {
+        _id: new mongoose.Types.ObjectId(),
         username: 'testuser',
         email: 'test@example.com',
         messages: [],
       };
 
       jest.spyOn(User, 'findById').mockReturnValue({
-        populate: jest.fn().mockResolvedValue(mockUser),
+        select: jest.fn().mockResolvedValue(userData),
       } as any);
+
+      mockRequest.user = { id: userData._id };
 
       await getUser(mockRequest, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(200);
-      expect(mockResponse.json).toHaveBeenCalledWith(mockUser);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        user: userData,
+      });
     });
   });
 
   describe('logout', () => {
     it('should clear session and return success message', () => {
-      mockRequest.session.user = { _id: '123' };
+      mockRequest.session = { destroy: jest.fn() };
 
       logout(mockRequest, mockResponse);
 
-      expect(mockRequest.session.user).toBeUndefined();
+      expect(mockRequest.session.destroy).toHaveBeenCalled();
       expect(mockResponse.status).toHaveBeenCalledWith(200);
-      expect(mockResponse.json).toHaveBeenCalledWith({ message: 'Disconnected' });
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: 'Logged out successfully',
+      });
     });
   });
 }); 

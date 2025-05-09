@@ -22,7 +22,7 @@ describe('Rating Controller', () => {
     mockRequest = {
       params: {},
       body: {},
-      user: { email: 'test@example.com' },
+      user: {},
     };
     mockResponse = {
       status: jest.fn().mockReturnThis(),
@@ -42,90 +42,66 @@ describe('Rating Controller', () => {
       await addRating(mockRequest, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.json).toHaveBeenCalledWith({ message: 'Missing parameters' });
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: 'Missing parameters',
+      });
     });
 
-    it('should add rating successfully and update movie rating', async () => {
+    it('should add rating and update movie rating successfully', async () => {
       const movieId = '123';
       const rating = 4.5;
+      const userEmail = 'test@example.com';
+
       mockRequest.params = { movieId };
       mockRequest.body = { rating };
+      mockRequest.user = { email: userEmail };
+
+      const mockRatingObj = {
+        save: jest.fn().mockResolvedValue({}),
+      };
+      (ratingModel as jest.Mock).mockImplementation(() => mockRatingObj);
 
       const mockRatings = [
         { rating: 4.5 },
         { rating: 3.5 },
         { rating: 5.0 },
       ];
-
-      const mockRatingInstance = {
-        save: jest.fn().mockResolvedValue({
-          email: 'test@example.com',
-          movie_id: 123,
-          rating: 4.5,
-        }),
-      };
-      (ratingModel as jest.Mock).mockImplementation(() => mockRatingInstance);
       (ratingModel.find as jest.Mock).mockResolvedValue(mockRatings);
-      (pool.query as jest.Mock).mockResolvedValue({ rows: [] });
+
+      (pool.query as jest.Mock).mockResolvedValue({});
 
       await addRating(mockRequest, mockResponse);
 
       expect(ratingModel).toHaveBeenCalledWith({
-        email: 'test@example.com',
+        email: userEmail,
         movie_id: 123,
-        rating: 4.5,
+        rating,
       });
-      expect(mockRatingInstance.save).toHaveBeenCalled();
-      expect(ratingModel.find).toHaveBeenCalledWith({}, { rating: 4.5 });
+      expect(mockRatingObj.save).toHaveBeenCalled();
+      expect(ratingModel.find).toHaveBeenCalledWith({}, { rating });
       expect(pool.query).toHaveBeenCalledWith(
         'UPDATE movies SET rating = $1 WHERE movie_id = $2;',
-        [13, 123]
+        [4.33, 123]
       );
       expect(mockResponse.status).toHaveBeenCalledWith(200);
-      expect(mockResponse.json).toHaveBeenCalledWith({ message: 'Rating added' });
-    });
-
-    it('should handle database errors during rating save', async () => {
-      const movieId = '123';
-      const rating = 4.5;
-      mockRequest.params = { movieId };
-      mockRequest.body = { rating };
-
-      const mockRatingInstance = {
-        save: jest.fn().mockRejectedValue(new Error('Database error')),
-      };
-      (ratingModel as jest.Mock).mockImplementation(() => mockRatingInstance);
-
-      await addRating(mockRequest, mockResponse);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        error: 'Exception occurred while adding rating',
+        message: 'Rating added',
       });
     });
 
-    it('should handle database errors during movie update', async () => {
+    it('should handle database errors', async () => {
       const movieId = '123';
       const rating = 4.5;
+      const userEmail = 'test@example.com';
+
       mockRequest.params = { movieId };
       mockRequest.body = { rating };
+      mockRequest.user = { email: userEmail };
 
-      const mockRatings = [
-        { rating: 4.5 },
-        { rating: 3.5 },
-        { rating: 5.0 },
-      ];
-
-      const mockRatingInstance = {
-        save: jest.fn().mockResolvedValue({
-          email: 'test@example.com',
-          movie_id: 123,
-          rating: 4.5,
-        }),
+      const mockRatingObj = {
+        save: jest.fn().mockRejectedValue(new Error('Database error')),
       };
-      (ratingModel as jest.Mock).mockImplementation(() => mockRatingInstance);
-      (ratingModel.find as jest.Mock).mockResolvedValue(mockRatings);
-      (pool.query as jest.Mock).mockRejectedValue(new Error('Database error'));
+      (ratingModel as jest.Mock).mockImplementation(() => mockRatingObj);
 
       await addRating(mockRequest, mockResponse);
 

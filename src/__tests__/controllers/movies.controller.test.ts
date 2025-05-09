@@ -1,4 +1,8 @@
-import { getMovies, getTopRatedMovies, getSeenMovies } from '../../controllers/movies.controller';
+import {
+  getMovies,
+  getTopRatedMovies,
+  getSeenMovies,
+} from '../../controllers/movies.controller';
 import pool from '../../boot/database/db_connect';
 
 jest.mock('../../boot/database/db_connect', () => ({
@@ -12,7 +16,7 @@ describe('Movies Controller', () => {
   beforeEach(() => {
     mockRequest = {
       query: {},
-      user: { email: 'test@example.com' },
+      user: {},
     };
     mockResponse = {
       status: jest.fn().mockReturnThis(),
@@ -25,7 +29,7 @@ describe('Movies Controller', () => {
   });
 
   describe('getMovies', () => {
-    it('should return movies grouped by type when no category is specified', async () => {
+    it('should return all movies grouped by type when no category is specified', async () => {
       const mockMovies = [
         { movie_id: 1, type: 'action', title: 'Movie 1' },
         { movie_id: 2, type: 'action', title: 'Movie 2' },
@@ -46,15 +50,15 @@ describe('Movies Controller', () => {
             { movie_id: 1, type: 'action', title: 'Movie 1' },
             { movie_id: 2, type: 'action', title: 'Movie 2' },
           ],
-          comedy: [
-            { movie_id: 3, type: 'comedy', title: 'Movie 3' },
-          ],
+          comedy: [{ movie_id: 3, type: 'comedy', title: 'Movie 3' }],
         },
       });
     });
 
     it('should return movies by category when category is specified', async () => {
-      mockRequest.query = { category: 'action' };
+      const category = 'action';
+      mockRequest.query = { category };
+
       const mockMovies = [
         { movie_id: 1, type: 'action', title: 'Movie 1' },
         { movie_id: 2, type: 'action', title: 'Movie 2' },
@@ -66,7 +70,7 @@ describe('Movies Controller', () => {
 
       expect(pool.query).toHaveBeenCalledWith(
         'SELECT * FROM movies WHERE type = $1 ORDER BY release_date DESC;',
-        ['action']
+        [category]
       );
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({ movies: mockMovies });
@@ -116,6 +120,9 @@ describe('Movies Controller', () => {
 
   describe('getSeenMovies', () => {
     it('should return seen movies for a user', async () => {
+      const userEmail = 'test@example.com';
+      mockRequest.user = { email: userEmail };
+
       const mockMovies = [
         { movie_id: 1, title: 'Movie 1' },
         { movie_id: 2, title: 'Movie 2' },
@@ -127,13 +134,14 @@ describe('Movies Controller', () => {
 
       expect(pool.query).toHaveBeenCalledWith(
         'SELECT * FROM seen_movies S JOIN movies M ON S.movie_id = M.movie_id WHERE email = $1;',
-        ['test@example.com']
+        [userEmail]
       );
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({ movies: mockMovies });
     });
 
     it('should handle database errors', async () => {
+      mockRequest.user = { email: 'test@example.com' };
       (pool.query as jest.Mock).mockRejectedValue(new Error('Database error'));
 
       await getSeenMovies(mockRequest, mockResponse);
