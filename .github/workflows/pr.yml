@@ -2,7 +2,7 @@ name: Pull Request Checks
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]  # Updated to include develop branch
 
 jobs:
   test-and-lint:
@@ -57,4 +57,4 @@ jobs:
         echo "Build artifacts:"
         ls -la dist/
         echo "Checking server.js content:"
-        head -n 5 dist/server.js 
+        head -n 5 dist/server.js
