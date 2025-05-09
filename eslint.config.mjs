@@ -10,7 +10,7 @@ export default [
     ignores: [
       'dist/**/*',
       'node_modules/**/*',
-      'jest.config.js',
+      'jest.config.cjs',
       'commitlint.config.cjs',
       'src/types/**/*.d.ts' // Completely ignore .d.ts files in types directory
     ]
