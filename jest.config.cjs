@@ -5,7 +5,8 @@ module.exports = {
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
-      tsconfig: 'tsconfig.json'
+      tsconfig: 'tsconfig.json',
+      isolatedModules: true
     }]
   },
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
@@ -25,11 +26,6 @@ module.exports = {
       functions: 80,
       lines: 80,
       statements: 80
-    }
-  },
-  globals: {
-    'ts-jest': {
-      isolatedModules: true
     }
   }
 };

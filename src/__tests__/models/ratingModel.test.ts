@@ -2,14 +2,6 @@ import mongoose from 'mongoose';
 import RatingModel from '../../models/ratingModel';
 
 describe('Rating Model Test', () => {
-  beforeAll(async () => {
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/test');
-  });
-
-  afterAll(async () => {
-    await mongoose.connection.close();
-  });
-
   beforeEach(async () => {
     await RatingModel.deleteMany({});
   });
@@ -18,7 +10,7 @@ describe('Rating Model Test', () => {
     const validRating = new RatingModel({
       movie_id: '123',
       rating: 5,
-      email: 'test@example.com'
+      email: 'test@example.com',
     });
     const savedRating = await validRating.save();
     expect(savedRating._id).toBeDefined();
@@ -30,7 +22,7 @@ describe('Rating Model Test', () => {
   it('should fail to save rating without required fields', async () => {
     const ratingWithoutMovieId = new RatingModel({
       rating: 5,
-      email: 'test@example.com'
+      email: 'test@example.com',
     });
 
     try {
@@ -46,7 +38,7 @@ describe('Rating Model Test', () => {
     const ratingWithInvalidRating = new RatingModel({
       movie_id: '123',
       rating: 6,
-      email: 'test@example.com'
+      email: 'test@example.com',
     });
 
     try {
@@ -61,7 +53,7 @@ describe('Rating Model Test', () => {
   it('should fail to save rating without email', async () => {
     const ratingWithoutEmail = new RatingModel({
       movie_id: '123',
-      rating: 5
+      rating: 5,
     });
 
     try {
@@ -159,4 +151,4 @@ describe('Rating Model Test', () => {
       expect(err.code).toBe(11000); // MongoDB duplicate key error code
     }
   });
-}); 
+});
