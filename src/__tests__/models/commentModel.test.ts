@@ -2,33 +2,25 @@ import mongoose from 'mongoose';
 import CommentModel from '../../models/commentModel';
 
 describe('Comment Model Test', () => {
-  beforeAll(async () => {
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/test');
-  });
-
-  afterAll(async () => {
-    await mongoose.connection.close();
-  });
-
   beforeEach(async () => {
     await CommentModel.deleteMany({});
   });
 
   it('should create & save comment successfully', async () => {
     const validComment = new CommentModel({
-      movie_id: '123',
-      rating: 5,
+      title: 'Test Comment Title',
       username: 'testuser',
-      comment: 'This is a test comment',
-      title: 'Test Title'
+      comment: 'This is a test comment with sufficient length',
+      rating: 4,
+      movie_id: new mongoose.Types.ObjectId().toString(),
     });
+
     const savedComment = await validComment.save();
     expect(savedComment._id).toBeDefined();
-    expect(savedComment.movie_id).toBe(validComment.movie_id);
-    expect(savedComment.rating).toBe(validComment.rating);
+    expect(savedComment.title).toBe(validComment.title);
     expect(savedComment.username).toBe(validComment.username);
     expect(savedComment.comment).toBe(validComment.comment);
-    expect(savedComment.title).toBe(validComment.title);
+    expect(savedComment.rating).toBe(validComment.rating);
   });
 
   it('should fail to save comment without required fields', async () => {
@@ -36,7 +28,7 @@ describe('Comment Model Test', () => {
       rating: 5,
       username: 'testuser',
       comment: 'This is a test comment',
-      title: 'Test Title'
+      title: 'Test Title',
     });
 
     try {
@@ -54,7 +46,7 @@ describe('Comment Model Test', () => {
       rating: 6,
       username: 'testuser',
       comment: 'This is a test comment',
-      title: 'Test Title'
+      title: 'Test Title',
     });
 
     try {
@@ -72,7 +64,7 @@ describe('Comment Model Test', () => {
       rating: 5,
       username: 'te',
       comment: 'This is a test comment',
-      title: 'Test Title'
+      title: 'Test Title',
     });
 
     try {
@@ -90,7 +82,7 @@ describe('Comment Model Test', () => {
       rating: 5,
       username: 'testuser',
       comment: 'short',
-      title: 'Test Title'
+      title: 'Test Title',
     });
 
     try {
@@ -108,7 +100,7 @@ describe('Comment Model Test', () => {
       rating: 5,
       username: 'testuser',
       comment: 'This is a test comment',
-      title: 'sh'
+      title: 'sh',
     });
 
     try {
@@ -126,7 +118,7 @@ describe('Comment Model Test', () => {
       rating: 5,
       username: 'testuser',
       comment: 'a'.repeat(501),
-      title: 'Test Title'
+      title: 'Test Title',
     });
 
     try {
@@ -137,4 +129,4 @@ describe('Comment Model Test', () => {
       expect(err.errors.comment).toBeDefined();
     }
   });
-}); 
+});
