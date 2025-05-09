@@ -1,3 +1,4 @@
+/* eslint-disable */
 // Basic server.js file to ensure the dist directory contains a server.js file
 console.log('Starting server...');
 
