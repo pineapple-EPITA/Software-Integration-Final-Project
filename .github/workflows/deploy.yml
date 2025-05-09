@@ -1,11 +1,11 @@
-name: Deploy
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [main, develop]
 
 jobs:
-  test-build-deploy:
+  build-test-deploy:
     runs-on: ubuntu-latest
 
     strategy:
@@ -13,48 +13,63 @@ jobs:
         node-version: [18.x]
 
     steps:
-    - uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
 
-    - name: Install dependencies
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Run linting
-      run: npm run lint
+      - name: Lint code
+        run: npm run lint
 
-    - name: Run tests
-      env:
-        NODE_ENV: test
-        MONGO_URI: ${{ secrets.MONGO_URI_TEST }}
-        DB_USER: ${{ secrets.DB_USER_TEST }}
-        DB_PASSWORD: ${{ secrets.DB_PASSWORD_TEST }}
-        DB_HOST: ${{ secrets.DB_HOST_TEST }}
-        DB_NAME: ${{ secrets.DB_NAME_TEST }}
-        SESSION_SECRET: ${{ secrets.SESSION_SECRET_TEST }}
-      run: npm test
+      - name: Run tests
+        env:
+          NODE_ENV: test
+          MONGO_URI: ${{ secrets.MONGO_URI_TEST }}
+          DB_USER: ${{ secrets.DB_USER_TEST }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD_TEST }}
+          DB_HOST: ${{ secrets.DB_HOST_TEST }}
+          DB_NAME: ${{ secrets.DB_NAME_TEST }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET_TEST }}
+        run: npm test
 
-    - name: Build
-      run: npm run build
+      - name: Build project
+        run: npm run build
 
-    - name: Verify build
-      run: |
-        if [ ! -d "dist" ]; then
-          echo "Build failed: dist directory not found"
-          exit 1
-        fi
-        if [ ! -f "dist/server.js" ]; then
-          echo "Build failed: server.js not found in dist directory"
-          exit 1
-        fi
+      - name: Verify build output
+        run: |
+          test -d dist || (echo "dist/ directory not found!" && exit 1)
+          test -f dist/server.js || (echo "dist/server.js not found!" && exit 1)
+          echo "Build verified successfully."
 
-    - name: Check for build artifacts
-      run: |
-        echo "Build artifacts:"
-        ls -la dist/
-        echo "Checking server.js content:"
-        head -n 5 dist/server.js
+      - name: Deploy (only from main)
+        if: github.ref == 'refs/heads/main'
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
+          NODE_ENV: production
+          MONGO_URI: ${{ secrets.MONGO_URI_PROD }}
+          DB_USER: ${{ secrets.DB_USER_PROD }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD_PROD }}
+          DB_HOST: ${{ secrets.DB_HOST_PROD }}
+          DB_NAME: ${{ secrets.DB_NAME_PROD }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET_PROD }}
+        run: |
+          echo "Starting deployment..."
+
+          # Example SSH Deployment
+          # chmod 600 deploy_key && ssh -i deploy_key user@host "
+          #   cd /app &&
+          #   git pull &&
+          #   npm ci &&
+          #   npm run build &&
+          #   pm2 restart app
+          # "
+
+          echo "Deployment completed."
