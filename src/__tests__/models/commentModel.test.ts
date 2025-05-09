@@ -12,7 +12,7 @@ describe('Comment Model Test', () => {
       username: 'testuser',
       comment: 'This is a test comment with sufficient length',
       rating: 4,
-      movie_id: new mongoose.Types.ObjectId().toString(),
+      movie_id: 123,
     });
 
     const savedComment = await validComment.save();
@@ -27,7 +27,7 @@ describe('Comment Model Test', () => {
     const commentWithoutMovieId = new CommentModel({
       rating: 5,
       username: 'testuser',
-      comment: 'This is a test comment',
+      comment: 'This is a test comment with sufficient length',
       title: 'Test Title',
     });
 
@@ -42,10 +42,10 @@ describe('Comment Model Test', () => {
 
   it('should fail to save comment with invalid rating', async () => {
     const commentWithInvalidRating = new CommentModel({
-      movie_id: '123',
+      movie_id: 123,
       rating: 6,
       username: 'testuser',
-      comment: 'This is a test comment',
+      comment: 'This is a test comment with sufficient length',
       title: 'Test Title',
     });
 
@@ -60,10 +60,10 @@ describe('Comment Model Test', () => {
 
   it('should fail to save comment with short username', async () => {
     const commentWithShortUsername = new CommentModel({
-      movie_id: '123',
+      movie_id: 123,
       rating: 5,
       username: 'te',
-      comment: 'This is a test comment',
+      comment: 'This is a test comment with sufficient length',
       title: 'Test Title',
     });
 
@@ -78,7 +78,7 @@ describe('Comment Model Test', () => {
 
   it('should fail to save comment with short comment', async () => {
     const commentWithShortComment = new CommentModel({
-      movie_id: '123',
+      movie_id: 123,
       rating: 5,
       username: 'testuser',
       comment: 'short',
@@ -96,10 +96,10 @@ describe('Comment Model Test', () => {
 
   it('should fail to save comment with short title', async () => {
     const commentWithShortTitle = new CommentModel({
-      movie_id: '123',
+      movie_id: 123,
       rating: 5,
       username: 'testuser',
-      comment: 'This is a test comment',
+      comment: 'This is a test comment with sufficient length',
       title: 'sh',
     });
 
@@ -114,10 +114,10 @@ describe('Comment Model Test', () => {
 
   it('should fail to save comment with long comment', async () => {
     const commentWithLongComment = new CommentModel({
-      movie_id: '123',
+      movie_id: 123,
       rating: 5,
       username: 'testuser',
-      comment: 'a'.repeat(501),
+      comment: 'a'.repeat(1001),
       title: 'Test Title',
     });
 
