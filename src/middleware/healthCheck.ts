@@ -1,11 +1,10 @@
-import { Router, Request, Response } from 'express';
+import express from 'express';
+import type { Request, Response } from 'express-serve-static-core';
 
-const router = Router();
+const router = express.Router();
 
-router.get('/api/health', (_req: Request, res: Response) => {
-  res.status(200).json({
-    message: 'All up and running !!',
-  });
+router.get('/health', (req: Request, res: Response) => {
+  res.status(200).json({ status: 'ok' });
 });
 
 export default router; 

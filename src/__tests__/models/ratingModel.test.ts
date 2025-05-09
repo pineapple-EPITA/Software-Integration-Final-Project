@@ -1,13 +1,9 @@
 import mongoose from 'mongoose';
 import RatingModel, { IRating } from '../../models/ratingModel';
 
-declare global {
-  var __MONGO_URI__: string;
-}
-
 describe('Rating Model Test', () => {
   beforeAll(async () => {
-    await mongoose.connect(global.__MONGO_URI__);
+    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/test');
   });
 
   afterAll(async () => {
@@ -19,17 +15,62 @@ describe('Rating Model Test', () => {
   });
 
   it('should create & save rating successfully', async () => {
-    const validRating = {
-      email: 'test@example.com',
-      movie_id: 123,
-      rating: 4,
-    };
-
-    const savedRating = await RatingModel.create(validRating) as IRating & { _id: mongoose.Types.ObjectId };
+    const validRating = new RatingModel({
+      movie_id: '123',
+      rating: 5,
+      email: 'test@example.com'
+    });
+    const savedRating = await validRating.save();
     expect(savedRating._id).toBeDefined();
-    expect(savedRating.email).toBe(validRating.email);
     expect(savedRating.movie_id).toBe(validRating.movie_id);
     expect(savedRating.rating).toBe(validRating.rating);
+    expect(savedRating.email).toBe(validRating.email);
+  });
+
+  it('should fail to save rating without required fields', async () => {
+    const ratingWithoutMovieId = new RatingModel({
+      rating: 5,
+      email: 'test@example.com'
+    });
+
+    try {
+      await ratingWithoutMovieId.save();
+      fail('Expected validation error');
+    } catch (error) {
+      const err = error as mongoose.Error.ValidationError;
+      expect(err.errors.movie_id).toBeDefined();
+    }
+  });
+
+  it('should fail to save rating with invalid rating', async () => {
+    const ratingWithInvalidRating = new RatingModel({
+      movie_id: '123',
+      rating: 6,
+      email: 'test@example.com'
+    });
+
+    try {
+      await ratingWithInvalidRating.save();
+      fail('Expected validation error');
+    } catch (error) {
+      const err = error as mongoose.Error.ValidationError;
+      expect(err.errors.rating).toBeDefined();
+    }
+  });
+
+  it('should fail to save rating without email', async () => {
+    const ratingWithoutEmail = new RatingModel({
+      movie_id: '123',
+      rating: 5
+    });
+
+    try {
+      await ratingWithoutEmail.save();
+      fail('Expected validation error');
+    } catch (error) {
+      const err = error as mongoose.Error.ValidationError;
+      expect(err.errors.email).toBeDefined();
+    }
   });
 
   it('should fail to save rating without required email', async () => {
@@ -38,46 +79,13 @@ describe('Rating Model Test', () => {
       rating: 4,
     });
 
-    let err;
     try {
       await ratingWithoutEmail.save();
+      fail('Expected validation error');
     } catch (error) {
-      err = error;
+      const err = error as mongoose.Error.ValidationError;
+      expect(err.errors.email).toBeDefined();
     }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.email).toBeDefined();
-  });
-
-  it('should fail to save rating without required movie_id', async () => {
-    const ratingWithoutMovieId = new RatingModel({
-      email: 'test@example.com',
-      rating: 4,
-    });
-
-    let err;
-    try {
-      await ratingWithoutMovieId.save();
-    } catch (error) {
-      err = error;
-    }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.movie_id).toBeDefined();
-  });
-
-  it('should fail to save rating without required rating value', async () => {
-    const ratingWithoutValue = new RatingModel({
-      email: 'test@example.com',
-      movie_id: 123,
-    });
-
-    let err;
-    try {
-      await ratingWithoutValue.save();
-    } catch (error) {
-      err = error;
-    }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.rating).toBeDefined();
   });
 
   it('should fail to save rating with invalid email format', async () => {
@@ -87,14 +95,13 @@ describe('Rating Model Test', () => {
       rating: 4,
     });
 
-    let err;
     try {
       await ratingWithInvalidEmail.save();
+      fail('Expected validation error');
     } catch (error) {
-      err = error;
+      const err = error as mongoose.Error.ValidationError;
+      expect(err.errors.email).toBeDefined();
     }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.email).toBeDefined();
   });
 
   it('should fail to save rating with rating value less than 1', async () => {
@@ -104,14 +111,13 @@ describe('Rating Model Test', () => {
       rating: 0,
     });
 
-    let err;
     try {
       await ratingWithLowValue.save();
+      fail('Expected validation error');
     } catch (error) {
-      err = error;
+      const err = error as mongoose.Error.ValidationError;
+      expect(err.errors.rating).toBeDefined();
     }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.rating).toBeDefined();
   });
 
   it('should fail to save rating with rating value greater than 5', async () => {
@@ -121,14 +127,13 @@ describe('Rating Model Test', () => {
       rating: 6,
     });
 
-    let err;
     try {
       await ratingWithHighValue.save();
+      fail('Expected validation error');
     } catch (error) {
-      err = error;
+      const err = error as mongoose.Error.ValidationError;
+      expect(err.errors.rating).toBeDefined();
     }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.rating).toBeDefined();
   });
 
   it('should fail to save duplicate rating for same movie and email', async () => {
@@ -146,13 +151,12 @@ describe('Rating Model Test', () => {
       rating: 5,
     });
 
-    let err;
     try {
       await duplicateRating.save();
+      fail('Expected duplicate key error');
     } catch (error) {
-      err = error;
+      const err = error as { code: number };
+      expect(err.code).toBe(11000); // MongoDB duplicate key error code
     }
-    expect(err).toBeDefined();
-    expect(err.code).toBe(11000); // MongoDB duplicate key error code
   });
 }); 

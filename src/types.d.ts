@@ -1,34 +1,51 @@
 import '@types/jest';
-import { Request, Response } from 'express';
+import { ExpressRequest, ExpressResponse } from './types/express';
+import { jest } from '@jest/globals';
+import {
+  UserDocument,
+  MessageDocument,
+  CommentDocument,
+  RatingDocument
+} from './types/database';
 
 declare global {
-  const jest: typeof import('@types/jest');
-  const describe: jest.Describe;
-  const it: jest.It;
-  const expect: jest.Expect;
-  const beforeEach: jest.BeforeEach;
-  const afterEach: jest.AfterEach;
-  const beforeAll: jest.BeforeAll;
-  const afterAll: jest.AfterAll;
-  namespace Express {
-    interface Request {
-      user?: any;
+  namespace jest {
+    interface Matchers<R> {
+      toBeValidMongoId(): R;
     }
   }
+
+  // Declare Jest globals
+  const describe: jest.Describe;
+  const beforeAll: jest.Lifecycle;
+  const afterAll: jest.Lifecycle;
+  const beforeEach: jest.Lifecycle;
+  const afterEach: jest.Lifecycle;
+  const it: jest.It;
+  const expect: jest.Expect;
+  const jest: typeof import('@jest/globals')['jest'];
 }
 
-export interface MockResponse extends Partial<Response> {
+export interface MockResponse extends Partial<ExpressResponse> {
   status: jest.Mock;
   json: jest.Mock;
 }
 
-export interface MockRequest extends Partial<Request> {
-  body?: any;
-  params?: any;
-  query?: any;
-  user?: any;
-  session?: any;
-  header?: jest.Mock;
+export interface MockRequest extends Partial<ExpressRequest> {
+  body?: Record<string, unknown>;
+  params?: Record<string, string>;
+  query?: Record<string, string | string[] | undefined>;
+  user?: {
+    _id: string;
+    email: string;
+  };
+  session?: {
+    destroy: () => void;
+    user?: {
+      _id: string;
+      email: string;
+    };
+  };
 }
 
 export interface MockPool {
@@ -39,4 +56,11 @@ export interface MockPool {
 export interface MockClient {
   query: jest.Mock;
   release: jest.Mock;
-} 
+}
+
+export {
+  UserDocument,
+  MessageDocument,
+  CommentDocument,
+  RatingDocument
+}; 

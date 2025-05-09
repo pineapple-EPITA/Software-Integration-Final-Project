@@ -3,12 +3,10 @@
     "incremental": false,
     "target": "es2016",
     "module": "commonjs",
-    "rootDir": "./src",
+    "rootDir": "./",
     "baseUrl": "./",
     "resolveJsonModule": true,
     "declaration": true,
-    "allowJs": true,
-    "checkJs": false,
     "sourceMap": true,
     "outDir": "dist",
     "removeComments": true,
@@ -19,10 +17,15 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "skipLibCheck": true,
-    "typeRoots": ["./node_modules/@types", "./src/types.d.ts"],
-    "types": ["node", "jest"]
+    "skipLibCheck": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.test.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

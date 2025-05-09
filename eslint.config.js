@@ -1,16 +1,17 @@
 import js from '@eslint/js';
-import tseslint from 'typescript-eslint';
+import tsPlugin from '@typescript-eslint/eslint-plugin';
+import tsParser from '@typescript-eslint/parser';
 import prettier from 'eslint-config-prettier';
 import jest from 'eslint-plugin-jest';
 
 export default [
   js.configs.recommended,
-  ...tseslint.configs.recommended,
+  tsPlugin.configs.recommended,
   prettier,
   {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
-      parser: tseslint.parser,
+      parser: tsParser,
       parserOptions: {
         project: './tsconfig.json',
         sourceType: 'module',
@@ -18,7 +19,7 @@ export default [
       },
     },
     plugins: {
-      '@typescript-eslint': tseslint.plugin,
+      '@typescript-eslint': tsPlugin,
       jest,
     },
     rules: {
@@ -45,6 +46,6 @@ export default [
       node: true,
       jest: true,
     },
-    ignores: ['dist/**/*', 'jest.config.js', 'src/__tests__/**/*'],
+    ignores: ['dist/**/*', 'jest.config.js'],
   },
 ]; 

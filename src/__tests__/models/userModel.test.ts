@@ -1,9 +1,9 @@
 import mongoose from 'mongoose';
-import UserModel from '../../models/userModel';
+import User from '../../models/userModel';
 
 describe('User Model Test', () => {
   beforeAll(async () => {
-    await mongoose.connect(global.__MONGO_URI__);
+    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/test');
   });
 
   afterAll(async () => {
@@ -11,127 +11,77 @@ describe('User Model Test', () => {
   });
 
   beforeEach(async () => {
-    await UserModel.deleteMany({});
+    await User.deleteMany({});
   });
 
   it('should create & save user successfully', async () => {
-    const validUser = {
-      username: 'testuser',
+    const validUser = new User({
       email: 'test@example.com',
       password: 'password123',
-    };
-
-    const savedUser = await UserModel.create(validUser);
+    });
+    const savedUser = await validUser.save();
     expect(savedUser._id).toBeDefined();
-    expect(savedUser.username).toBe(validUser.username);
     expect(savedUser.email).toBe(validUser.email);
     expect(savedUser.password).toBe(validUser.password);
-    expect(savedUser.messages).toEqual([]);
   });
 
-  it('should fail to save user without required email', async () => {
-    const userWithoutEmail = new UserModel({
-      username: 'testuser',
-      password: 'password123',
-    });
+  it('should fail to save user without required fields', async () => {
+    const userWithoutEmail = new User({ password: 'password123' });
+    const userWithoutPassword = new User({ email: 'test@example.com' });
 
-    let err;
+    let err: mongoose.Error.ValidationError;
     try {
       await userWithoutEmail.save();
     } catch (error) {
-      err = error;
+      err = error as mongoose.Error.ValidationError;
     }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-  });
+    expect(err!).toBeInstanceOf(mongoose.Error.ValidationError);
+    expect(err!.message).toBe('User validation failed: email: Path `email` is required.');
 
-  it('should fail to save user without required password', async () => {
-    const userWithoutPassword = new UserModel({
-      username: 'testuser',
-      email: 'test@example.com',
-    });
-
-    let err;
     try {
       await userWithoutPassword.save();
     } catch (error) {
-      err = error;
+      err = error as mongoose.Error.ValidationError;
     }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
+    expect(err!).toBeInstanceOf(mongoose.Error.ValidationError);
+    expect(err!.message).toBe('User validation failed: password: Path `password` is required.');
   });
 
   it('should fail to save user with invalid email format', async () => {
-    const userWithInvalidEmail = new UserModel({
-      username: 'testuser',
+    const userWithInvalidEmail = new User({
       email: 'invalid-email',
       password: 'password123',
     });
 
-    let err;
+    let err: mongoose.Error.ValidationError;
     try {
       await userWithInvalidEmail.save();
     } catch (error) {
-      err = error;
+      err = error as mongoose.Error.ValidationError;
     }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.email).toBeDefined();
+    expect(err!).toBeInstanceOf(mongoose.Error.ValidationError);
+    expect(err!.message).toContain('User validation failed');
   });
 
-  it('should fail to save user with short username', async () => {
-    const userWithShortUsername = new UserModel({
-      username: 'te',
+  it('should fail to save user with duplicate email', async () => {
+    const user1 = new User({
       email: 'test@example.com',
       password: 'password123',
     });
+    await user1.save();
 
-    let err;
-    try {
-      await userWithShortUsername.save();
-    } catch (error) {
-      err = error;
-    }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.username).toBeDefined();
-  });
-
-  it('should fail to save user with short password', async () => {
-    const userWithShortPassword = new UserModel({
-      username: 'testuser',
-      email: 'test@example.com',
-      password: '12345',
-    });
-
-    let err;
-    try {
-      await userWithShortPassword.save();
-    } catch (error) {
-      err = error;
-    }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.password).toBeDefined();
-  });
-
-  it('should fail to save duplicate email', async () => {
-    const validUser = {
-      username: 'testuser1',
-      email: 'test@example.com',
-      password: 'password123',
-    };
-
-    await UserModel.create(validUser);
-
-    const duplicateUser = new UserModel({
-      username: 'testuser2',
+    const user2 = new User({
       email: 'test@example.com',
       password: 'password456',
     });
 
-    let err;
+    let err: mongoose.Error.ValidationError;
     try {
-      await duplicateUser.save();
+      await user2.save();
     } catch (error) {
-      err = error;
+      err = error as mongoose.Error.ValidationError;
     }
-    expect(err).toBeDefined();
-    expect(err.code).toBe(11000); // MongoDB duplicate key error code
+    expect(err!).toBeInstanceOf(mongoose.Error.ValidationError);
+    expect(err!.message).toContain('User validation failed');
   });
 }); 

@@ -4,7 +4,7 @@ import { statusCodes } from '../constants/statusCodes';
 import { ValidationError } from '../types/error';
 
 interface RequestBody {
-  [key: string]: any;
+  [key: string]: unknown;
   creation_date?: string;
 }
 
@@ -70,9 +70,9 @@ export const validateSignin = (req: Request): ValidationError[] => {
   return errors;
 };
 
-export const validate = (validator: (req: Request) => ValidationError[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    const errors = validator(req);
+export const validate = (validatorFn: (req: Request) => ValidationError[]): ((req: Request, res: Response, next: NextFunction) => void | Response) => {
+  return (req: Request, res: Response, next: NextFunction): void | Response => {
+    const errors = validatorFn(req);
     if (errors.length > 0) {
       return res.status(400).json({ errors });
     }

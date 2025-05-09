@@ -1,27 +1,24 @@
 import request from 'supertest';
-import express, { Express } from 'express';
-import healthCheck from '../../middleware/healthCheck';
+import express from 'express';
+import type { Application } from 'express-serve-static-core';
+import healthCheckRouter from '../../middleware/healthCheck';
 
 describe('Health Check Middleware', () => {
-    let app: Express;
+    let app: Application;
 
     beforeEach(() => {
         app = express();
-        app.use(healthCheck);
+        app.use(healthCheckRouter);
     });
 
-    it('should return 200 status with health message', async () => {
-        const response = await request(app).get('/api/health');
-
+    it('should return 200 OK for health check endpoint', async () => {
+        const response = await request(app).get('/health');
         expect(response.status).toBe(200);
-        expect(response.body).toEqual({
-            message: 'All up and running !!',
-        });
+        expect(response.body).toEqual({ status: 'ok' });
     });
 
     it('should return 404 for non-health check routes', async () => {
-        const response = await request(app).get('/api/other');
-
+        const response = await request(app).get('/non-existent');
         expect(response.status).toBe(404);
     });
 }); 

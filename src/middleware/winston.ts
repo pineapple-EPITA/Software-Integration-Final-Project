@@ -1,5 +1,5 @@
 import winston from 'winston';
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 
 const logger = winston.createLogger({
   level: 'info',
@@ -20,12 +20,12 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 export const stream = {
-  write: (message: string) => {
+  write: (message: string): void => {
     logger.info(message.trim());
   }
 };
 
-export const logRequest = (req: Request, res: Response, next: Function) => {
+export const logRequest = (req: Request, res: Response, next: NextFunction): void => {
   const start = Date.now();
   res.on('finish', () => {
     const duration = Date.now() - start;
@@ -39,7 +39,7 @@ export const logRequest = (req: Request, res: Response, next: Function) => {
   next();
 };
 
-export const logError = (err: Error) => {
+export const logError = (err: Error): void => {
   logger.error({
     message: err.message,
     stack: err.stack

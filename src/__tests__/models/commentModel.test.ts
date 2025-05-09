@@ -1,17 +1,9 @@
 import mongoose from 'mongoose';
 import CommentModel, { IComment } from '../../models/commentModel';
 
-declare global {
-  namespace NodeJS {
-    interface Global {
-      __MONGO_URI__: string;
-    }
-  }
-}
-
 describe('Comment Model Test', () => {
   beforeAll(async () => {
-    await mongoose.connect(global.__MONGO_URI__);
+    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/test');
   });
 
   afterAll(async () => {
@@ -23,15 +15,14 @@ describe('Comment Model Test', () => {
   });
 
   it('should create & save comment successfully', async () => {
-    const validComment = {
-      movie_id: 123,
-      rating: 4,
+    const validComment = new CommentModel({
+      movie_id: '123',
+      rating: 5,
       username: 'testuser',
-      comment: 'This is a test comment that is long enough',
-      title: 'Test Comment Title',
-    };
-
-    const savedComment = await CommentModel.create(validComment) as IComment & { _id: mongoose.Types.ObjectId };
+      comment: 'This is a test comment',
+      title: 'Test Title'
+    });
+    const savedComment = await validComment.save();
     expect(savedComment._id).toBeDefined();
     expect(savedComment.movie_id).toBe(validComment.movie_id);
     expect(savedComment.rating).toBe(validComment.rating);
@@ -40,117 +31,110 @@ describe('Comment Model Test', () => {
     expect(savedComment.title).toBe(validComment.title);
   });
 
-  it('should fail to save comment without required movie_id', async () => {
+  it('should fail to save comment without required fields', async () => {
     const commentWithoutMovieId = new CommentModel({
-      rating: 4,
+      rating: 5,
       username: 'testuser',
-      comment: 'This is a test comment that is long enough',
-      title: 'Test Comment Title',
+      comment: 'This is a test comment',
+      title: 'Test Title'
     });
 
-    let err;
     try {
       await commentWithoutMovieId.save();
+      fail('Expected validation error');
     } catch (error) {
-      err = error;
+      const err = error as mongoose.Error.ValidationError;
+      expect(err.errors.movie_id).toBeDefined();
     }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.movie_id).toBeDefined();
   });
 
   it('should fail to save comment with invalid rating', async () => {
     const commentWithInvalidRating = new CommentModel({
-      movie_id: 123,
+      movie_id: '123',
       rating: 6,
       username: 'testuser',
-      comment: 'This is a test comment that is long enough',
-      title: 'Test Comment Title',
+      comment: 'This is a test comment',
+      title: 'Test Title'
     });
 
-    let err;
     try {
       await commentWithInvalidRating.save();
+      fail('Expected validation error');
     } catch (error) {
-      err = error;
+      const err = error as mongoose.Error.ValidationError;
+      expect(err.errors.rating).toBeDefined();
     }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.rating).toBeDefined();
   });
 
   it('should fail to save comment with short username', async () => {
     const commentWithShortUsername = new CommentModel({
-      movie_id: 123,
-      rating: 4,
+      movie_id: '123',
+      rating: 5,
       username: 'te',
-      comment: 'This is a test comment that is long enough',
-      title: 'Test Comment Title',
+      comment: 'This is a test comment',
+      title: 'Test Title'
     });
 
-    let err;
     try {
       await commentWithShortUsername.save();
+      fail('Expected validation error');
     } catch (error) {
-      err = error;
+      const err = error as mongoose.Error.ValidationError;
+      expect(err.errors.username).toBeDefined();
     }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.username).toBeDefined();
   });
 
   it('should fail to save comment with short comment', async () => {
     const commentWithShortComment = new CommentModel({
-      movie_id: 123,
-      rating: 4,
+      movie_id: '123',
+      rating: 5,
       username: 'testuser',
       comment: 'short',
-      title: 'Test Comment Title',
+      title: 'Test Title'
     });
 
-    let err;
     try {
       await commentWithShortComment.save();
+      fail('Expected validation error');
     } catch (error) {
-      err = error;
+      const err = error as mongoose.Error.ValidationError;
+      expect(err.errors.comment).toBeDefined();
     }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.comment).toBeDefined();
   });
 
   it('should fail to save comment with short title', async () => {
     const commentWithShortTitle = new CommentModel({
-      movie_id: 123,
-      rating: 4,
+      movie_id: '123',
+      rating: 5,
       username: 'testuser',
-      comment: 'This is a test comment that is long enough',
-      title: 'Te',
+      comment: 'This is a test comment',
+      title: 'sh'
     });
 
-    let err;
     try {
       await commentWithShortTitle.save();
+      fail('Expected validation error');
     } catch (error) {
-      err = error;
+      const err = error as mongoose.Error.ValidationError;
+      expect(err.errors.title).toBeDefined();
     }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.title).toBeDefined();
   });
 
-  it('should fail to save comment with too long comment', async () => {
-    const longComment = 'a'.repeat(1001);
+  it('should fail to save comment with long comment', async () => {
     const commentWithLongComment = new CommentModel({
-      movie_id: 123,
-      rating: 4,
+      movie_id: '123',
+      rating: 5,
       username: 'testuser',
-      comment: longComment,
-      title: 'Test Comment Title',
+      comment: 'a'.repeat(501),
+      title: 'Test Title'
     });
 
-    let err;
     try {
       await commentWithLongComment.save();
+      fail('Expected validation error');
     } catch (error) {
-      err = error;
+      const err = error as mongoose.Error.ValidationError;
+      expect(err.errors.comment).toBeDefined();
     }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.comment).toBeDefined();
   });
 }); 

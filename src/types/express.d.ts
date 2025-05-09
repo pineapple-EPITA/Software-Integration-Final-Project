@@ -1,14 +1,54 @@
-import { Request } from 'express';
+import { Request, Response, NextFunction } from 'express';
+import { Session } from 'express-session';
 
 declare global {
   namespace Express {
     interface Request {
       user?: {
-        id?: string;
+        _id: string;
         email: string;
+      };
+      session?: {
+        id?: string;
+        cookie?: any;
+        regenerate?: (callback: (err: any) => void) => void;
+        destroy: (callback: (err: any) => void) => void;
+        reload?: (callback: (err: any) => void) => void;
+        save?: (callback: (err: any) => void) => void;
+        touch?: () => void;
+        user?: {
+          _id: string;
+          email: string;
+        };
       };
     }
   }
 }
 
-export {}; 
+export interface CustomRequest extends Request {
+  user?: {
+    _id: string;
+    email: string;
+  };
+  session?: Session & {
+    user?: {
+      _id: string;
+      email: string;
+    };
+    destroy: (callback?: (err: any) => void) => void;
+  };
+}
+
+export interface CustomRequestWithBody<T = any> extends CustomRequest {
+  body: T;
+}
+
+export interface UserSession extends Session {
+  user?: {
+    _id: string;
+    email: string;
+  };
+  destroy: (callback?: (err: any) => void) => void;
+}
+
+export type { Request, Response, NextFunction }; 
