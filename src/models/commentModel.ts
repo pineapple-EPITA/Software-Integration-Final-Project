@@ -1,6 +1,17 @@
-const mongoose = require('mongoose');
+import mongoose, { Document, Schema } from 'mongoose';
 
-const commentSchema = new mongoose.Schema(
+interface IComment extends Document {
+  movie_id: number;
+  username: string;
+  comment: string;
+  title: string;
+  rating: number;
+  downvotes: number;
+  upvotes: number;
+  created_at: Date;
+}
+
+const commentSchema = new Schema<IComment>(
   {
     movie_id: {
       type: Number,
@@ -42,4 +53,6 @@ const commentSchema = new mongoose.Schema(
   },
 );
 
-module.exports = mongoose.model('Comment', commentSchema);
+const Comment = mongoose.model<IComment>('Comment', commentSchema);
+
+export default Comment; 

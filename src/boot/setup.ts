@@ -1,48 +1,43 @@
-const express = require('express');
-const PORT = process.env.PORT || 8080;
+import express, { Application } from 'express';
+import path from 'path';
+import dotenv from 'dotenv';
+import cors from 'cors';
+import helmet from 'helmet';
+import mongoose from 'mongoose';
+import session from 'express-session';
+import morgan from 'morgan';
+import logger from '../middleware/winston';
+import notFound from '../middleware/notFound';
+import healthCheck from '../middleware/healthCheck';
+import verifyToken from '../middleware/authentication';
+import validator from '../middleware/validator';
 
+// ROUTES
+import authRoutes from '../routes/auth.routes';
+import messageRoutes from '../routes/messages.routes';
+import usersRoutes from '../routes/users.routes';
+import profileRoutes from '../routes/profile.routes';
+import moviesRoutes from '../routes/movies.routes';
+import ratingRoutes from '../routes/rating.routes';
+import commentsRoutes from '../routes/comments.routes';
+
+const PORT = process.env.PORT || 8080;
 const MONGO_URI = process.env.MONGO_URI;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'default_secret';
 
-const app = express();
-const path = require('path');
-const dotenv = require('dotenv');
-
+const app: Application = express();
 const ENV = process.env.NODE_ENV || 'dev';
 dotenv.config({ path: path.resolve(__dirname, `../../.env.${ENV}`) });
 
-const cors = require('cors');
-const helmet = require('helmet');
-const mongoose = require('mongoose');
-const session = require('express-session');
-const morgan = require('morgan');
-const logger = require('../middleware/winston');
-const notFound = require('../middleware/notFound');
-const healthCheck = require('../middleware/healthCheck');
-const verifyToken = require('../middleware/authentication');
-const validator = require('../middleware/validator');
-
-// ROUTES
-const authRoutes = require('../routes/auth.routes');
-const messageRoutes = require('../routes/messages.routes');
-const usersRoutes = require('../routes/users.routes');
-const profileRoutes = require('../routes/profile.routes');
-const moviesRoutes = require('../routes/movies.routes');
-const ratingRoutes = require('../routes/rating.routes');
-const commentsRoutes = require('../routes/comments.routes');
-
 try {
-  mongoose.connect(MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  });
+  mongoose.connect(MONGO_URI as string);
   logger.info(`MongoDB Connected to ${MONGO_URI}`);
 } catch (error) {
   logger.error('Error connecting to DB: ' + error);
 }
 
 // MIDDLEWARE
-const registerCoreMiddleWare = () => {
+const registerCoreMiddleWare = (): void => {
   try {
     // using our session
     app.use(
@@ -86,17 +81,16 @@ const registerCoreMiddleWare = () => {
 };
 
 // handling uncaught exceptions
-const handleError = () => {
+const handleError = (): void => {
   // 'process' is a built it object in nodejs
   // if uncaught exceptoin, then we execute this
-  //
-  process.on('uncaughtException', (err) => {
+  process.on('uncaughtException', (err: Error) => {
     logger.error(`UNCAUGHT_EXCEPTION OCCURED : ${JSON.stringify(err.stack)}`);
   });
 };
 
 // start applicatoin
-const startApp = () => {
+const startApp = (): void => {
   try {
     // register core application level middleware
     registerCoreMiddleWare();
@@ -119,4 +113,4 @@ const startApp = () => {
   }
 };
 
-module.exports = { startApp };
+export { startApp }; 

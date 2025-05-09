@@ -1,6 +1,13 @@
-const mongoose = require('mongoose');
+import mongoose, { Document, Schema } from 'mongoose';
 
-const ratingSchema = new mongoose.Schema(
+interface IRating extends Document {
+  movie_id: number;
+  email: string;
+  rating: number;
+  created_at: Date;
+}
+
+const ratingSchema = new Schema<IRating>(
   {
     movie_id: {
       type: Number,
@@ -24,4 +31,6 @@ const ratingSchema = new mongoose.Schema(
   },
 );
 
-module.exports = mongoose.model('Rating', ratingSchema);
+const Rating = mongoose.model<IRating>('Rating', ratingSchema);
+
+export default Rating; 
