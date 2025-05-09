@@ -34,6 +34,7 @@ jest.mock('../../models/ratingModel', () => {
     findOne: jest.fn(),
     find: jest.fn(),
   };
+  
   const MockRatingClass = jest.fn().mockImplementation(() => ({
     save: jest.fn().mockResolvedValue(true),
     _id: '123',
@@ -71,7 +72,8 @@ describe('Rating Controller', () => {
       ...baseRequest,
       params: { movieId: '123' }
     } as Partial<RatingTestRequest>;
-    mockResponse = createMockResponse();
+    // Cast mockResponse to any to avoid TypeScript errors
+    mockResponse = createMockResponse() as any;
     jest.clearAllMocks();
   });
 

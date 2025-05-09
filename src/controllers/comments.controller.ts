@@ -2,7 +2,15 @@ import { Response } from 'express';
 import { statusCodes } from '../constants/statusCodes';
 import logger from '../middleware/winston';
 import CommentModel from '../models/commentModel';
-import { CustomRequest, CommentRequestBody } from '../types/test';
+import { CustomRequest } from '../types/express';
+
+// Define CommentRequestBody interface with all required properties
+interface CommentRequestBody {
+  rating: number;
+  username: string;
+  comment: string;
+  title: string;
+}
 
 export const addComment = async (req: CustomRequest, res: Response): Promise<void> => {
   const { movie_id } = req.params;

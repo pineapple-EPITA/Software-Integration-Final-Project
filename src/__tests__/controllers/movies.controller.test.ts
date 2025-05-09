@@ -16,7 +16,7 @@ describe('Movies Controller', () => {
     mockRequest = createMockRequest({
       user: { email: 'test@example.com', _id: '123' }
     });
-    mockResponse = createMockResponse();
+    mockResponse = createMockResponse() as any;
     jest.clearAllMocks();
   });
 
