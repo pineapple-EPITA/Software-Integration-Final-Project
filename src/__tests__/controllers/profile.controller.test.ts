@@ -4,16 +4,9 @@ import { CustomRequest } from '../../types/test';
 import { editPassword, logout } from '../../controllers/profile.controller';
 import { createMockRequest, createMockResponse, castToResponse } from '../utils';
 
-interface UserRow {
-  email: string;
-  password: string;
-}
-
-type MockQueryResult = QueryResult<UserRow>;
-
-// Create a mock pool with the minimum required functionality for our tests
-const mockPool = {
-  query: jest.fn().mockImplementation((): Promise<MockQueryResult> => {
+// Mock the database connection at the top
+jest.mock('../../boot/database/db_connect', () => ({
+  query: jest.fn().mockImplementation((): Promise<any> => {
     return Promise.resolve({
       rows: [],
       command: 'SELECT',
@@ -27,9 +20,17 @@ const mockPool = {
   on: jest.fn(),
   off: jest.fn(),
   removeListener: jest.fn(),
-} as unknown as jest.Mocked<Pool>;
+}));
 
-jest.mock('../../boot/database/db_connect', () => mockPool);
+interface UserRow {
+  email: string;
+  password: string;
+}
+
+type MockQueryResult = QueryResult<UserRow>;
+
+// Create a mock pool with the minimum required functionality for our tests
+const mockPool = jest.mocked(jest.requireMock('../../boot/database/db_connect'));
 
 describe('Profile Controller', () => {
   let mockRequest: CustomRequest;
@@ -39,6 +40,9 @@ describe('Profile Controller', () => {
     mockRequest = createMockRequest({
       user: { email: 'test@example.com', _id: '123' }
     }) as CustomRequest;
+    mockRequest.session = {
+      destroy: jest.fn((callback) => callback && callback())
+    } as any;
     mockResponse = castToResponse(createMockResponse());
     jest.clearAllMocks();
   });

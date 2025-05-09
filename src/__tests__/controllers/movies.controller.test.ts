@@ -53,19 +53,19 @@ describe('Movies Controller', () => {
   describe('getMovieById', () => {
     it('should return a movie by id', async () => {
       const mockMovie = { id: 1, title: 'Movie 1', description: 'Description 1' };
-      mockRequest.params = { movieId: '1' };
+      mockRequest.params = { id: '1' };
 
       (pool.query as jest.Mock).mockResolvedValue({ rows: [mockMovie] });
 
       await getMovieById(mockRequest as CustomRequest, mockResponse as Response);
 
-      expect(pool.query).toHaveBeenCalledWith('SELECT * FROM movies WHERE id = $1', ['1']);
+      expect(pool.query).toHaveBeenCalledWith('SELECT * FROM movies WHERE id = $1', [1]);
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith(mockMovie);
     });
 
     it('should return 404 if movie not found', async () => {
-      mockRequest.params = { movieId: '999' };
+      mockRequest.params = { id: '999' };
 
       (pool.query as jest.Mock).mockResolvedValue({ rows: [] });
 
@@ -98,7 +98,7 @@ describe('Movies Controller', () => {
   describe('updateMovie', () => {
     it('should update an existing movie', async () => {
       const updateData = { title: 'Updated Movie', description: 'Updated Description' };
-      mockRequest.params = { movieId: '1' };
+      mockRequest.params = { id: '1' };
       mockRequest.body = updateData;
 
       const mockResult = { id: 1, ...updateData };
@@ -107,8 +107,8 @@ describe('Movies Controller', () => {
       await updateMovie(mockRequest as CustomRequest, mockResponse as Response);
 
       expect(pool.query).toHaveBeenCalledWith(
-        'UPDATE movies SET title = $1, description = $2 WHERE id = $3 RETURNING *',
-        [updateData.title, updateData.description, '1']
+        'UPDATE movies SET title = COALESCE($1, title), description = COALESCE($2, description) WHERE id = $3 RETURNING *',
+        [updateData.title, updateData.description, 1]
       );
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith(mockResult);
@@ -117,13 +117,13 @@ describe('Movies Controller', () => {
 
   describe('deleteMovie', () => {
     it('should delete a movie', async () => {
-      mockRequest.params = { movieId: '1' };
+      mockRequest.params = { id: '1' };
 
       (pool.query as jest.Mock).mockResolvedValue({ rows: [{ id: 1 }] });
 
       await deleteMovie(mockRequest as CustomRequest, mockResponse as Response);
 
-      expect(pool.query).toHaveBeenCalledWith('DELETE FROM movies WHERE id = $1 RETURNING *', ['1']);
+      expect(pool.query).toHaveBeenCalledWith('DELETE FROM movies WHERE id = $1 RETURNING *', [1]);
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({ message: 'Movie deleted successfully' });
     });

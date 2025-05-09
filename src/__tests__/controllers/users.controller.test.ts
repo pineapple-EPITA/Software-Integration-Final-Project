@@ -15,6 +15,7 @@ describe('Users Controller', () => {
   let mockRequest: any;
   let mockResponse: any;
   let mockClient: any;
+  const originalEnv = process.env;
 
   beforeEach(() => {
     mockRequest = {
@@ -30,10 +31,16 @@ describe('Users Controller', () => {
       release: jest.fn(),
     };
     (pool.connect as jest.Mock).mockResolvedValue(mockClient);
+    (pool.query as jest.Mock).mockImplementation(() => Promise.resolve({ rows: [] }));
+    
+    // Set JWT secret for tests
+    process.env.JWT_SECRET_KEY = 'test-secret';
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+    // Restore original env variables
+    process.env = originalEnv;
   });
 
   describe('register', () => {
@@ -80,13 +87,15 @@ describe('Users Controller', () => {
       };
 
       mockClient.query
-        .mockResolvedValueOnce({ rowCount: 0 })
-        .mockResolvedValueOnce({ rowCount: 1 })
-        .mockResolvedValueOnce({ rowCount: 1 });
+        .mockResolvedValueOnce({ rowCount: 0 }) // SELECT user
+        .mockResolvedValueOnce({ rowCount: 1 }) // BEGIN
+        .mockResolvedValueOnce({ rowCount: 1 }) // INSERT user
+        .mockResolvedValueOnce({ rowCount: 1 }) // INSERT address
+        .mockResolvedValueOnce({ rowCount: 1 }); // COMMIT
 
       await register(mockRequest, mockResponse);
 
-      expect(mockClient.query).toHaveBeenCalledTimes(4); // SELECT, BEGIN, INSERT user, INSERT address
+      expect(mockClient.query).toHaveBeenCalledTimes(5); // SELECT, BEGIN, INSERT user, INSERT address, COMMIT
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({ message: 'User created' });
     });
@@ -130,8 +139,9 @@ describe('Users Controller', () => {
         password: 'wrongpassword',
       };
 
-      (pool.query as jest.Mock).mockImplementation((_query, _params, callback) => {
-        callback(null, { rows: [] });
+      (pool.query as jest.Mock).mockResolvedValueOnce({ 
+        rows: [],
+        rowCount: 0  
       });
 
       await login(mockRequest, mockResponse);
@@ -153,8 +163,14 @@ describe('Users Controller', () => {
         username: 'testuser',
       };
 
-      (pool.query as jest.Mock).mockImplementation((_query, _params, callback) => {
-        callback(null, { rows: [mockUser] });
+      // Initialize the session object
+      mockRequest.session = {
+        user: undefined
+      };
+
+      (pool.query as jest.Mock).mockResolvedValueOnce({ 
+        rows: [mockUser],
+        rowCount: 1
       });
 
       const mockToken = 'mock.jwt.token';
@@ -181,9 +197,7 @@ describe('Users Controller', () => {
         password: 'password123',
       };
 
-      (pool.query as jest.Mock).mockImplementation((_query, _params, callback) => {
-        callback(new Error('Database error'), null);
-      });
+      (pool.query as jest.Mock).mockRejectedValueOnce(new Error('Database error'));
 
       await login(mockRequest, mockResponse);
 
