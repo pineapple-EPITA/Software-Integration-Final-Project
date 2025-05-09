@@ -7,7 +7,11 @@
     "start": "nodemon src/index.js",
     "prepare": "husky install",
     "lint": "eslint . --ext .js,.ts,.tsx",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "start:dev": "NODE_ENV=dev node src/boot/setup.js",
+    "start:release": "NODE_ENV=release node src/boot/setup.js",
+    "start:pprod": "NODE_ENV=pprod node src/boot/setup.js",
+    "start:prod": "NODE_ENV=prod node src/boot/setup.js"
   },
   "keywords": [],
   "author": "",

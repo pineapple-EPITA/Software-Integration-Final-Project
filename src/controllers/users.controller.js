@@ -25,7 +25,7 @@ const register = async (req, res) => {
         await client.query('BEGIN');
         const addedUser = await client.query(
           `INSERT INTO users(email, username, password, creation_date)
-           VALUES ($1, $2, crypt($3, gen_salt('bf')), $4);`,
+          VALUES ($1, $2, crypt($3, gen_salt('bf')), $4);`,
           [email, username, password, req.body.creation_date],
         );
 

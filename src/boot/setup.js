@@ -1,6 +1,15 @@
 const express = require('express');
 const PORT = process.env.PORT || 8080;
+
+const MONGO_URI = process.env.MONGO_URI;
+const SESSION_SECRET = process.env.SESSION_SECRET || 'default_secret';
+
 const app = express();
+const path = require('path');
+const dotenv = require('dotenv');
+
+const ENV = process.env.NODE_ENV || 'dev';
+dotenv.config({ path: path.resolve(__dirname, `../../.env.${ENV}`) });
 
 const cors = require('cors');
 const helmet = require('helmet');
@@ -23,10 +32,13 @@ const ratingRoutes = require('../routes/rating.routes');
 const commentsRoutes = require('../routes/comments.routes');
 
 try {
-  mongoose.connect('mongodb://localhost:27017/epita');
-  logger.info('MongoDB Connected');
+  mongoose.connect(MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  });
+  logger.info(`MongoDB Connected to ${MONGO_URI}`);
 } catch (error) {
-  logger.error('Error connecting to DB' + error);
+  logger.error('Error connecting to DB: ' + error);
 }
 
 // MIDDLEWARE
