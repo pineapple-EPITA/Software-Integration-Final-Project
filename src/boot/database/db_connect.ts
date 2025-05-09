@@ -64,7 +64,8 @@ export const connectToDatabase = async (): Promise<void> => {
 
 export const connectToPostgres = async (): Promise<void> => {
   try {
-    const _client = await db_connection.connect();
+    // Get client but don't store the variable to avoid TypeScript warnings
+    await db_connection.connect();
     logger.info('Connected to PostgreSQL');
   } catch (_err) {
     // Error parameter is required by try/catch but we only need to log a generic message

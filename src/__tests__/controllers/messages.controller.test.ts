@@ -9,10 +9,11 @@ jest.mock('../../models/messageModel', () => {
   const MockMessage = jest.fn().mockReturnValue(mockMessageInstance);
   
   // Add static methods to the constructor
-  MockMessage.findById = jest.fn();
-  MockMessage.findByIdAndUpdate = jest.fn();
-  MockMessage.findByIdAndDelete = jest.fn();
-  MockMessage.find = jest.fn();
+  // Explicitly cast to any to avoid TypeScript errors with jest.Mock
+  (MockMessage as any).findById = jest.fn();
+  (MockMessage as any).findByIdAndUpdate = jest.fn();
+  (MockMessage as any).findByIdAndDelete = jest.fn();
+  (MockMessage as any).find = jest.fn();
   
   return MockMessage;
 });
@@ -24,14 +25,14 @@ import { addMessage, getMessages, editMessage, deleteMessage, getMessageById } f
 import Message from '../../models/messageModel';
 import { createMockRequest, createMockResponse } from '../utils';
 
-interface MessageData {
+// Define a more specific type for MessageData that will be used in tests
+interface TestMessageData {
     _id?: mongoose.Types.ObjectId;
     name?: string;
     content?: string;
     user?: mongoose.Types.ObjectId;
     created_at?: Date;
     updated_at?: Date;
-    save?: () => Promise<MessageData>;
 }
 
 describe('Messages Controller', () => {
@@ -50,7 +51,8 @@ describe('Messages Controller', () => {
         mockRequest = createMockRequest({
             session: mockSession as UserSession
         });
-        mockResponse = createMockResponse();
+        // Cast mockResponse to any to avoid TypeScript errors
+        mockResponse = createMockResponse() as any;
         jest.clearAllMocks();
     });
 
@@ -78,7 +80,8 @@ describe('Messages Controller', () => {
             };
             
             // Get the mock instance that will be returned when Message constructor is called
-            const mockMessageInstance = (Message as jest.Mock)();
+            // Cast Message to any to avoid TypeScript errors
+            const mockMessageInstance = ((Message as any) as jest.Mock)();
             mockMessageInstance.save.mockResolvedValueOnce(mockSavedMessage);
 
             await addMessage(mockRequest as CustomRequest, mockResponse as Response);
@@ -104,7 +107,8 @@ describe('Messages Controller', () => {
             mockRequest.body = messageData;
 
             // Get the mock instance that will be returned when Message constructor is called
-            const mockMessageInstance = (Message as jest.Mock)();
+            // Cast Message to any to avoid TypeScript errors
+            const mockMessageInstance = ((Message as any) as jest.Mock)();
             mockMessageInstance.save.mockRejectedValueOnce(new Error('Database error'));
 
             await addMessage(mockRequest as CustomRequest, mockResponse as Response);
@@ -151,7 +155,7 @@ describe('Messages Controller', () => {
                 }
             ];
 
-            (Message.find as jest.Mock).mockResolvedValueOnce(mockMessages);
+            ((Message.find as any) as jest.Mock).mockResolvedValueOnce(mockMessages);
 
             await getMessages(mockRequest as CustomRequest, mockResponse as Response);
 
@@ -161,7 +165,7 @@ describe('Messages Controller', () => {
         });
 
         it('should handle database errors', async () => {
-            (Message.find as jest.Mock).mockRejectedValueOnce(new Error('Database error'));
+            ((Message.find as any) as jest.Mock).mockRejectedValueOnce(new Error('Database error'));
 
             await getMessages(mockRequest as CustomRequest, mockResponse as Response);
 
@@ -190,7 +194,7 @@ describe('Messages Controller', () => {
                 updated_at: new Date()
             };
 
-            (Message.findByIdAndUpdate as jest.Mock).mockResolvedValueOnce(updatedMessage);
+            ((Message.findByIdAndUpdate as any) as jest.Mock).mockResolvedValueOnce(updatedMessage);
 
             await editMessage(mockRequest as CustomRequest, mockResponse as Response);
 
@@ -208,7 +212,7 @@ describe('Messages Controller', () => {
             mockRequest.params = { messageId };
             mockRequest.body = { name: 'Updated Message' };
 
-            (Message.findByIdAndUpdate as jest.Mock).mockResolvedValueOnce(null);
+            ((Message.findByIdAndUpdate as any) as jest.Mock).mockResolvedValueOnce(null);
 
             await editMessage(mockRequest as CustomRequest, mockResponse as Response);
 
@@ -223,7 +227,7 @@ describe('Messages Controller', () => {
             mockRequest.params = { messageId };
             mockRequest.body = { name: 'Updated Message' };
 
-            (Message.findByIdAndUpdate as jest.Mock).mockRejectedValueOnce(new Error('Database error'));
+            ((Message.findByIdAndUpdate as any) as jest.Mock).mockRejectedValueOnce(new Error('Database error'));
 
             await editMessage(mockRequest as CustomRequest, mockResponse as Response);
 
@@ -245,7 +249,7 @@ describe('Messages Controller', () => {
                 user: userId
             };
 
-            (Message.findByIdAndDelete as jest.Mock).mockResolvedValueOnce(deletedMessage);
+            ((Message.findByIdAndDelete as any) as jest.Mock).mockResolvedValueOnce(deletedMessage);
 
             await deleteMessage(mockRequest as CustomRequest, mockResponse as Response);
 
@@ -260,7 +264,7 @@ describe('Messages Controller', () => {
             const messageId = '681d8c4f04d978316a099de6';
             mockRequest.params = { messageId };
 
-            (Message.findByIdAndDelete as jest.Mock).mockResolvedValueOnce(null);
+            ((Message.findByIdAndDelete as any) as jest.Mock).mockResolvedValueOnce(null);
 
             await deleteMessage(mockRequest as CustomRequest, mockResponse as Response);
 
@@ -274,7 +278,7 @@ describe('Messages Controller', () => {
             const messageId = '681d8c4f04d978316a099de6';
             mockRequest.params = { messageId };
 
-            (Message.findByIdAndDelete as jest.Mock).mockRejectedValueOnce(new Error('Database error'));
+            ((Message.findByIdAndDelete as any) as jest.Mock).mockRejectedValueOnce(new Error('Database error'));
 
             await deleteMessage(mockRequest as CustomRequest, mockResponse as Response);
 
@@ -299,7 +303,7 @@ describe('Messages Controller', () => {
                 updated_at: new Date()
             };
 
-            (Message.findById as jest.Mock).mockResolvedValueOnce(mockMessage);
+            ((Message.findById as any) as jest.Mock).mockResolvedValueOnce(mockMessage);
 
             await getMessageById(mockRequest as CustomRequest, mockResponse as Response);
 
@@ -312,7 +316,7 @@ describe('Messages Controller', () => {
             const messageId = '681d8c4f04d978316a099ded';
             mockRequest.params = { messageId };
 
-            (Message.findById as jest.Mock).mockResolvedValueOnce(null);
+            ((Message.findById as any) as jest.Mock).mockResolvedValueOnce(null);
 
             await getMessageById(mockRequest as CustomRequest, mockResponse as Response);
 
@@ -326,7 +330,7 @@ describe('Messages Controller', () => {
             const messageId = '681d8c4f04d978316a099ded';
             mockRequest.params = { messageId };
 
-            (Message.findById as jest.Mock).mockRejectedValueOnce(new Error('Database error'));
+            ((Message.findById as any) as jest.Mock).mockRejectedValueOnce(new Error('Database error'));
 
             await getMessageById(mockRequest as CustomRequest, mockResponse as Response);
 

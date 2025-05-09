@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { Pool, QueryResult } from 'pg';
+import { QueryResult } from 'pg';
 import { CustomRequest } from '../../types/test';
 import { editPassword, logout } from '../../controllers/profile.controller';
 import { createMockRequest, createMockResponse, castToResponse } from '../utils';
