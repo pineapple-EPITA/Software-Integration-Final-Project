@@ -25,16 +25,6 @@ import { addMessage, getMessages, editMessage, deleteMessage, getMessageById } f
 import Message from '../../models/messageModel';
 import { createMockRequest, createMockResponse } from '../utils';
 
-// Define a more specific type for MessageData that will be used in tests
-interface TestMessageData {
-    _id?: mongoose.Types.ObjectId;
-    name?: string;
-    content?: string;
-    user?: mongoose.Types.ObjectId;
-    created_at?: Date;
-    updated_at?: Date;
-}
-
 describe('Messages Controller', () => {
     let mockRequest: Partial<CustomRequest>;
     let mockResponse: Partial<Response>;

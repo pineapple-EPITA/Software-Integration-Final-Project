@@ -1,26 +1,30 @@
 import { jest } from '@jest/globals';
-import { Session, Cookie } from 'express-session';
+import { Cookie } from 'express-session';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { signup, signin, getProfile, logout } from '../../controllers/auth.controller';
 import User from '../../models/userModel';
-import { createMockRequest, createMockResponse } from '../utils';
+import { createMockResponse, castToCustomRequest } from '../utils';
 import { statusCodes } from '../../constants/statusCodes';
+import { CustomRequest } from '../../types/express';
 
+// Mock the models and functions
 jest.mock('bcrypt');
 jest.mock('jsonwebtoken');
-jest.mock('../../models/userModel');
-
-interface UserData {
-  _id?: mongoose.Types.ObjectId;
-  username?: string;
-  email: string;
-  password?: string;
-  messages?: mongoose.Types.ObjectId[];
-  save?: () => Promise<UserData>;
-}
+jest.mock('../../models/userModel', () => {
+  return {
+    __esModule: true,
+    default: {
+      findOne: jest.fn(),
+      findById: jest.fn(),
+      prototype: {
+        save: jest.fn(),
+      },
+    },
+  };
+});
 
 interface AuthRequestBody {
   username?: string;
@@ -28,21 +32,8 @@ interface AuthRequestBody {
   password?: string;
 }
 
-interface UserSession extends Session {
-  user?: {
-    email: string;
-    _id: string;
-  };
-  destroy?: (callback?: (err: any) => void) => UserSession;
-}
-
-interface CustomRequestWithBody extends Request {
+interface CustomRequestWithBody extends CustomRequest {
   body: AuthRequestBody;
-  session: UserSession;
-  user?: {
-    email: string;
-    _id: string;
-  };
 }
 
 describe('Auth Controller', () => {
@@ -65,15 +56,18 @@ describe('Auth Controller', () => {
           sameSite: 'lax'
         } as Cookie,
         user: { email: 'test@example.com', _id: '123' },
-        destroy: jest.fn((callback?: (err: any) => void) => {
-          if (callback) callback(null);
-          return mockRequest.session;
-        })
+        // Add required session methods for TypeScript type compatibility
+        destroy: jest.fn(),
+        regenerate: jest.fn(),
+        reload: jest.fn(),
+        save: jest.fn(),
+        touch: jest.fn(),
+        resetMaxAge: jest.fn()
       },
       user: { email: 'test@example.com', _id: '123' }
     } as unknown as CustomRequestWithBody;
 
-    mockResponse = createMockResponse();
+    mockResponse = createMockResponse() as unknown as Response;
     process.env.JWT_SECRET = 'test-secret-key';
   });
 
@@ -96,7 +90,7 @@ describe('Auth Controller', () => {
       const mockSave = jest.fn().mockResolvedValue({});
       (User.prototype.save as jest.Mock) = mockSave;
 
-      await signup(mockRequest, mockResponse);
+      await signup(mockRequest as any, mockResponse);
 
       expect(User.findOne).toHaveBeenCalledWith({ email: userData.email });
       expect(bcrypt.hashSync).toHaveBeenCalledWith(userData.password, 10);
@@ -117,7 +111,7 @@ describe('Auth Controller', () => {
 
       (User.findOne as jest.Mock).mockResolvedValue({ email: userData.email });
 
-      await signup(mockRequest, mockResponse);
+      await signup(mockRequest as any, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(statusCodes.badRequest);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -135,7 +129,7 @@ describe('Auth Controller', () => {
 
       (User.findOne as jest.Mock).mockRejectedValue(new Error('Database error'));
 
-      await signup(mockRequest, mockResponse);
+      await signup(mockRequest as any, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(statusCodes.serverError);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -152,11 +146,10 @@ describe('Auth Controller', () => {
       };
       mockRequest.body = userData;
 
-      (User.findOne as jest.Mock).mockReturnValue({
-        lean: jest.fn().mockResolvedValue(null)
-      });
+      const mockLean = jest.fn().mockResolvedValue(null);
+      (User.findOne as jest.Mock).mockReturnValue({ lean: mockLean });
 
-      await signin(mockRequest, mockResponse);
+      await signin(mockRequest as any, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(statusCodes.unauthorized);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -177,12 +170,11 @@ describe('Auth Controller', () => {
         password: 'hashedPassword',
       };
 
-      (User.findOne as jest.Mock).mockReturnValue({
-        lean: jest.fn().mockResolvedValue(mockUser)
-      });
+      const mockLean = jest.fn().mockResolvedValue(mockUser);
+      (User.findOne as jest.Mock).mockReturnValue({ lean: mockLean });
       (bcrypt.compareSync as jest.Mock).mockReturnValue(false);
 
-      await signin(mockRequest, mockResponse);
+      await signin(mockRequest as any, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(statusCodes.unauthorized);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -204,13 +196,12 @@ describe('Auth Controller', () => {
         password: 'hashedPassword',
       };
 
-      (User.findOne as jest.Mock).mockReturnValue({
-        lean: jest.fn().mockResolvedValue(mockUser)
-      });
+      const mockLean = jest.fn().mockResolvedValue(mockUser);
+      (User.findOne as jest.Mock).mockReturnValue({ lean: mockLean });
       (bcrypt.compareSync as jest.Mock).mockReturnValue(true);
       (jwt.sign as jest.Mock).mockReturnValue('test-token');
 
-      await signin(mockRequest, mockResponse);
+      await signin(mockRequest as any, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(statusCodes.ok);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -230,11 +221,10 @@ describe('Auth Controller', () => {
       };
       mockRequest.body = userData;
 
-      (User.findOne as jest.Mock).mockReturnValue({
-        lean: jest.fn().mockRejectedValue(new Error('Database error'))
-      });
+      const mockLean = jest.fn().mockRejectedValue(new Error('Database error'));
+      (User.findOne as jest.Mock).mockReturnValue({ lean: mockLean });
 
-      await signin(mockRequest, mockResponse);
+      await signin(mockRequest as any, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(statusCodes.serverError);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -249,14 +239,13 @@ describe('Auth Controller', () => {
         _id: new mongoose.Types.ObjectId(),
         username: 'testuser',
         email: 'test@example.com',
-        messages: [],
+        messages: [] as mongoose.Types.ObjectId[],
       };
 
-      (User.findById as jest.Mock).mockReturnValue({
-        lean: jest.fn().mockResolvedValue(mockUser)
-      });
+      const mockLean = jest.fn().mockResolvedValue(mockUser);
+      (User.findById as jest.Mock).mockReturnValue({ lean: mockLean });
 
-      await getProfile(mockRequest, mockResponse);
+      await getProfile(castToCustomRequest(mockRequest), mockResponse);
 
       expect(User.findById).toHaveBeenCalledWith(
         mockRequest.session.user?._id,
@@ -269,11 +258,10 @@ describe('Auth Controller', () => {
     });
 
     it('should return error if user not found', async () => {
-      (User.findById as jest.Mock).mockReturnValue({
-        lean: jest.fn().mockResolvedValue(null)
-      });
+      const mockLean = jest.fn().mockResolvedValue(null);
+      (User.findById as jest.Mock).mockReturnValue({ lean: mockLean });
 
-      await getProfile(mockRequest, mockResponse);
+      await getProfile(castToCustomRequest(mockRequest), mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(statusCodes.notFound);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -284,7 +272,7 @@ describe('Auth Controller', () => {
 
   describe('logout', () => {
     it('should clear session and return success message', async () => {
-      await logout(mockRequest, mockResponse);
+      await logout(mockRequest as any, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(statusCodes.success);
       expect(mockResponse.json).toHaveBeenCalledWith({
