@@ -28,7 +28,33 @@ jobs:
       run: npm run lint
 
     - name: Run tests
+      env:
+        NODE_ENV: test
+        MONGO_URI: ${{ secrets.MONGO_URI_TEST }}
+        DB_USER: ${{ secrets.DB_USER_TEST }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD_TEST }}
+        DB_HOST: ${{ secrets.DB_HOST_TEST }}
+        DB_NAME: ${{ secrets.DB_NAME_TEST }}
+        SESSION_SECRET: ${{ secrets.SESSION_SECRET_TEST }}
       run: npm test
 
     - name: Build
       run: npm run build
+
+    - name: Verify build
+      run: |
+        if [ ! -d "dist" ]; then
+          echo "Build failed: dist directory not found"
+          exit 1
+        fi
+        if [ ! -f "dist/server.js" ]; then
+          echo "Build failed: server.js not found in dist directory"
+          exit 1
+        fi
+
+    - name: Check for build artifacts
+      run: |
+        echo "Build artifacts:"
+        ls -la dist/
+        echo "Checking server.js content:"
+        head -n 5 dist/server.js

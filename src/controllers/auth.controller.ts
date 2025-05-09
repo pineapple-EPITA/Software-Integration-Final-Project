@@ -1,8 +1,8 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { Session } from 'express-session';
-import * as bcrypt from 'bcrypt';
-import * as jwt from 'jsonwebtoken';
-import UserModel from '../models/userModel';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import UserModel, { IUser } from '../models/userModel';
 import { statusCodes } from '../constants/statusCodes';
 import logger from '../middleware/winston';
 import { CustomRequest } from '../types/express';
@@ -15,8 +15,8 @@ interface AuthRequestBody {
 
 interface UserSession extends Session {
   user?: {
-    email: string;
     _id: string;
+    email: string;
   };
 }
 
@@ -25,33 +25,8 @@ interface CustomRequestWithBody extends CustomRequest {
   session: UserSession;
 }
 
-const validateEmail = (email: string): boolean => {
-  const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
-  return emailRegex.test(email);
-};
-
-export const signup = async (req: CustomRequestWithBody, res: Response): Promise<void> => {
-  const { username, email, password } = req.body;
-
-  if (!username || !password || !email) {
-    res.status(statusCodes.badRequest).json({ error: 'Missing information' });
-    return;
-  }
-
-  if (!validateEmail(email)) {
-    res.status(statusCodes.badRequest).json({ error: 'Invalid email format' });
-    return;
-  }
-
-  if (password.length < 6) {
-    res.status(statusCodes.badRequest).json({ error: 'Password must be at least 6 characters long' });
-    return;
-  }
-
-  if (username.length < 3) {
-    res.status(statusCodes.badRequest).json({ error: 'Username must be at least 3 characters long' });
-    return;
-  }
+export const signup = async (req: Request, res: Response): Promise<void> => {
+  const { email, username, password } = req.body;
 
   try {
     const existingUser = await UserModel.findOne({ email });
@@ -62,87 +37,76 @@ export const signup = async (req: CustomRequestWithBody, res: Response): Promise
 
     const hash = bcrypt.hashSync(password, 10);
 
-    const User = new UserModel({
+    const newUser = new UserModel({
       email,
       username,
-      password: hash,
+      password: hash
     });
-    const user = await User.save();
-    res.status(statusCodes.success).json(user);
+
+    await newUser.save();
+
+    res.status(statusCodes.created).json({ message: 'User registered successfully' });
   } catch (error) {
     logger.error(error instanceof Error ? error.stack : 'Unknown error');
-    res.status(statusCodes.queryError).json({ error: 'Failed to save user' });
+    res.status(statusCodes.serverError).json({ error: 'Error registering user' });
   }
 };
 
-export const signin = async (req: CustomRequestWithBody, res: Response): Promise<void> => {
+export const signin = async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
-    res.status(statusCodes.badRequest).json({ error: 'Missing information' });
-    return;
-  }
-
-  if (!validateEmail(email)) {
-    res.status(statusCodes.badRequest).json({ error: 'Invalid email format' });
-    return;
-  }
-
   try {
-    const user = await UserModel.findOne({ email });
+    const user = await UserModel.findOne({ email }).lean<IUser>();
 
     if (!user) {
-      res.status(statusCodes.badRequest).json({ message: 'User not found' });
+      res.status(statusCodes.unauthorized).json({ error: 'Invalid credentials' });
       return;
     }
 
-    if (!bcrypt.compareSync(password, user.password)) {
-      res.status(statusCodes.badRequest).json({ message: "Email or password don't match" });
+    const isValid = bcrypt.compareSync(password, user.password);
+    if (!isValid) {
+      res.status(statusCodes.unauthorized).json({ error: 'Invalid credentials' });
       return;
     }
-
-    req.session.user = {
-      email: user.email,
-      _id: user._id.toString(),
-    };
 
     const token = jwt.sign(
-      { user: { id: user._id, email: user.email } },
-      process.env.JWT_SECRET_KEY || '',
-      {
-        expiresIn: '1h',
-      },
+      { _id: user._id, email: user.email },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '1h' }
     );
 
-    res.status(statusCodes.success).json({ token });
+    res.status(statusCodes.ok).json({
+      token,
+      user: {
+        _id: user._id,
+        email: user.email,
+        username: user.username
+      }
+    });
   } catch (error) {
     logger.error(error instanceof Error ? error.stack : 'Unknown error');
-    res.status(statusCodes.queryError).json({ error: 'Failed to get user' });
+    res.status(statusCodes.serverError).json({ error: 'Error signing in' });
   }
 };
 
-export const getUser = async (req: CustomRequestWithBody, res: Response): Promise<void> => {
-  if (!req.session.user) {
-    res.status(statusCodes.unauthorized).json({ error: 'You are not authenticated' });
-    return;
-  }
-
+export const getProfile = async (req: CustomRequest, res: Response): Promise<void> => {
   try {
     const user = await UserModel
-      .findById(req.session.user._id, {
+      .findById(req.session.user?._id, {
         password: 0,
+        __v: 0
       })
-      .populate('messages');
+      .lean<IUser>();
 
     if (!user) {
-      res.status(statusCodes.badRequest).json({ message: 'User not found' });
+      res.status(statusCodes.notFound).json({ error: 'User not found' });
       return;
     }
 
-    res.status(statusCodes.success).json(user);
+    res.status(statusCodes.ok).json({ user });
   } catch (error) {
     logger.error(error instanceof Error ? error.stack : 'Unknown error');
-    res.status(statusCodes.queryError).json({ error: 'Failed to get user' });
+    res.status(statusCodes.serverError).json({ error: 'Error fetching profile' });
   }
 };
 
@@ -151,5 +115,5 @@ export const logout = (req: CustomRequestWithBody, res: Response): void => {
     delete req.session.user;
   }
 
-  res.status(statusCodes.success).json({ message: 'Disconnected' });
+  res.status(statusCodes.success).json({ message: 'Logged out successfully' });
 }; 

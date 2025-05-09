@@ -6,7 +6,7 @@ import helmet from 'helmet';
 import mongoose from 'mongoose';
 import session from 'express-session';
 import morgan from 'morgan';
-import logger from '../middleware/winston';
+import logger, { stream as loggerStream } from '../middleware/winston';
 import notFound from '../middleware/notFound';
 import healthCheck from '../middleware/healthCheck';
 import verifyToken from '../middleware/authentication';
@@ -42,7 +42,7 @@ const registerCoreMiddleWare = (): void => {
     // using our session
     app.use(
       session({
-        secret: '1234',
+        secret: SESSION_SECRET,
         resave: false,
         saveUninitialized: true,
         cookie: {
@@ -52,7 +52,7 @@ const registerCoreMiddleWare = (): void => {
       }),
     );
 
-    app.use(morgan('combined', { stream: logger.stream }));
+    app.use(morgan('combined', { stream: loggerStream }));
     app.use(express.json()); // returning middleware that only parses Json
     app.use(cors({})); // enabling CORS
     app.use(helmet()); // enabling helmet -> setting response headers

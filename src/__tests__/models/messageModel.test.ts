@@ -1,13 +1,9 @@
 import mongoose from 'mongoose';
 import MessageModel, { IMessage } from '../../models/messageModel';
 
-declare global {
-  var __MONGO_URI__: string;
-}
-
 describe('Message Model Test', () => {
   beforeAll(async () => {
-    await mongoose.connect(global.__MONGO_URI__);
+    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/test');
   });
 
   afterAll(async () => {
@@ -40,14 +36,13 @@ describe('Message Model Test', () => {
       user: userId,
     });
 
-    let err;
     try {
       await messageWithoutName.save();
+      fail('Expected validation error');
     } catch (error) {
-      err = error;
+      const err = error as mongoose.Error.ValidationError;
+      expect(err.errors.name).toBeDefined();
     }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.name).toBeDefined();
   });
 
   it('should fail to save message without required user', async () => {
@@ -56,14 +51,13 @@ describe('Message Model Test', () => {
       content: 'This is a test message that is long enough',
     });
 
-    let err;
     try {
       await messageWithoutUser.save();
+      fail('Expected validation error');
     } catch (error) {
-      err = error;
+      const err = error as mongoose.Error.ValidationError;
+      expect(err.errors.user).toBeDefined();
     }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.user).toBeDefined();
   });
 
   it('should fail to save message with short name', async () => {
@@ -74,14 +68,13 @@ describe('Message Model Test', () => {
       user: userId,
     });
 
-    let err;
     try {
       await messageWithShortName.save();
+      fail('Expected validation error');
     } catch (error) {
-      err = error;
+      const err = error as mongoose.Error.ValidationError;
+      expect(err.errors.name).toBeDefined();
     }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.name).toBeDefined();
   });
 
   it('should fail to save message with too long name', async () => {
@@ -93,14 +86,13 @@ describe('Message Model Test', () => {
       user: userId,
     });
 
-    let err;
     try {
       await messageWithLongName.save();
+      fail('Expected validation error');
     } catch (error) {
-      err = error;
+      const err = error as mongoose.Error.ValidationError;
+      expect(err.errors.name).toBeDefined();
     }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.name).toBeDefined();
   });
 
   it('should fail to save message with short content', async () => {
@@ -111,14 +103,13 @@ describe('Message Model Test', () => {
       user: userId,
     });
 
-    let err;
     try {
       await messageWithShortContent.save();
+      fail('Expected validation error');
     } catch (error) {
-      err = error;
+      const err = error as mongoose.Error.ValidationError;
+      expect(err.errors.content).toBeDefined();
     }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.content).toBeDefined();
   });
 
   it('should fail to save message with too long content', async () => {
@@ -130,14 +121,13 @@ describe('Message Model Test', () => {
       user: userId,
     });
 
-    let err;
     try {
       await messageWithLongContent.save();
+      fail('Expected validation error');
     } catch (error) {
-      err = error;
+      const err = error as mongoose.Error.ValidationError;
+      expect(err.errors.content).toBeDefined();
     }
-    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err.errors.content).toBeDefined();
   });
 
   it('should save message without optional content', async () => {

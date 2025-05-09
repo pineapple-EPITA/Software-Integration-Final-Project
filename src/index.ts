@@ -1,11 +1,14 @@
 import 'dotenv/config';
 import { startApp } from './boot/setup';
+import logger from './middleware/winston';
 
-(() => {
+const startServer = async (): Promise<void> => {
   try {
     startApp();
   } catch (error) {
-    console.log('Error in index.ts => startApp');
-    console.log(`Error: ${JSON.stringify(error, undefined, 2)}`);
+    logger.error('Failed to start server:', error);
+    process.exit(1);
   }
-})(); 
+};
+
+startServer(); 

@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { Pool, QueryResult } from 'pg';
 import { CustomRequest } from '../../types/test';
 import { editPassword, logout } from '../../controllers/profile.controller';
-import { createMockRequest, createMockResponse } from '../utils';
+import { createMockRequest, createMockResponse, castToResponse } from '../utils';
 
 interface UserRow {
   email: string;
@@ -32,14 +32,14 @@ const mockPool = {
 jest.mock('../../boot/database/db_connect', () => mockPool);
 
 describe('Profile Controller', () => {
-  let mockRequest: Partial<CustomRequest>;
-  let mockResponse: Partial<Response>;
+  let mockRequest: CustomRequest;
+  let mockResponse: Response;
 
   beforeEach(() => {
     mockRequest = createMockRequest({
       user: { email: 'test@example.com', _id: '123' }
-    });
-    mockResponse = createMockResponse();
+    }) as CustomRequest;
+    mockResponse = castToResponse(createMockResponse());
     jest.clearAllMocks();
   });
 
@@ -49,7 +49,7 @@ describe('Profile Controller', () => {
 
   describe('editPassword', () => {
     it('should return 400 if oldPassword or newPassword is missing', async () => {
-      await editPassword(mockRequest as CustomRequest, mockResponse as Response);
+      await editPassword(mockRequest, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -63,7 +63,7 @@ describe('Profile Controller', () => {
         newPassword: 'password123',
       };
 
-      await editPassword(mockRequest as CustomRequest, mockResponse as Response);
+      await editPassword(mockRequest, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -77,7 +77,7 @@ describe('Profile Controller', () => {
         newPassword: '12345',
       };
 
-      await editPassword(mockRequest as CustomRequest, mockResponse as Response);
+      await editPassword(mockRequest, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -100,7 +100,7 @@ describe('Profile Controller', () => {
       };
       (mockPool.query as jest.Mock).mockResolvedValueOnce(mockResult);
 
-      await editPassword(mockRequest as CustomRequest, mockResponse as Response);
+      await editPassword(mockRequest, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -132,7 +132,7 @@ describe('Profile Controller', () => {
       };
       (mockPool.query as jest.Mock).mockResolvedValueOnce(mockUpdateResult);
 
-      await editPassword(mockRequest as CustomRequest, mockResponse as Response);
+      await editPassword(mockRequest, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -149,7 +149,7 @@ describe('Profile Controller', () => {
       const dbError = new Error('Database error');
       (mockPool.query as jest.Mock).mockRejectedValueOnce(dbError);
 
-      await editPassword(mockRequest as CustomRequest, mockResponse as Response);
+      await editPassword(mockRequest, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(500);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -165,7 +165,7 @@ describe('Profile Controller', () => {
         destroy: jest.fn((callback) => callback()),
       } as any;
 
-      await logout(mockRequest as CustomRequest, mockResponse as Response);
+      await logout(mockRequest, mockResponse);
 
       expect(mockRequest.session.user).toBeUndefined();
       expect(mockResponse.status).toHaveBeenCalledWith(200);
@@ -173,7 +173,7 @@ describe('Profile Controller', () => {
     });
 
     it('should return success message even if no user session exists', async () => {
-      await logout(mockRequest as CustomRequest, mockResponse as Response);
+      await logout(mockRequest, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({ message: 'Disconnected' });

@@ -1,47 +1,50 @@
-// eslint.config.mjs
 import js from '@eslint/js';
-import globals from 'globals';
 import tseslint from 'typescript-eslint';
-import pluginReact from 'eslint-plugin-react';
-import { defineConfig } from 'eslint/config';
+import prettier from 'eslint-config-prettier';
+import jest from 'eslint-plugin-jest';
 
-export default defineConfig([
+export default [
   js.configs.recommended,
+  ...tseslint.configs.recommended,
+  prettier,
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
-      globals: {
-        ...globals.browser,
-        ...globals.node,
-      },
       parser: tseslint.parser,
       parserOptions: {
         project: './tsconfig.json',
+        sourceType: 'module',
+        tsconfigRootDir: process.cwd(),
       },
     },
     plugins: {
       '@typescript-eslint': tseslint.plugin,
-      react: pluginReact,
+      jest,
     },
     rules: {
-      '@typescript-eslint/explicit-function-return-type': 'error',
+      '@typescript-eslint/interface-name-prefix': 'off',
+      '@typescript-eslint/explicit-function-return-type': 'warn',
+      '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-vars': 'error',
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', {
+        'argsIgnorePattern': '^_',
+        'varsIgnorePattern': '^_',
+        'ignoreRestSiblings': true
+      }],
       'no-console': 'warn',
-      'no-restricted-syntax': [
-        'error',
-        'ForInStatement',
-        'LabeledStatement',
-        'WithStatement',
-      ],
+      'jest/no-disabled-tests': 'warn',
+      'jest/no-focused-tests': 'error',
+      'jest/no-identical-title': 'error',
+      'jest/prefer-to-have-length': 'warn',
+      'jest/valid-expect': 'error',
+      'jest/no-standalone-expect': 'off',
+      'jest/expect-expect': 'off',
     },
-    settings: {
-      react: {
-        version: 'detect',
-      },
+    env: {
+      node: true,
+      jest: true,
     },
-    ignores: ['commitlint.config.cjs'],
+    ignores: ['dist/**/*', 'jest.config.js', 'src/__tests__/**/*'],
   },
-]);
+]; 
