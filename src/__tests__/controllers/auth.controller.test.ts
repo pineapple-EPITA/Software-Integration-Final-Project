@@ -26,6 +26,11 @@ jest.mock('../../models/userModel', () => {
   };
 });
 
+// Type the mocked functions properly
+const mockedUser = User as jest.Mocked<typeof User>;
+const mockedBcrypt = bcrypt as jest.Mocked<typeof bcrypt>;
+const mockedJwt = jwt as jest.Mocked<typeof jwt>;
+
 interface AuthRequestBody {
   username?: string;
   email?: string;
@@ -84,16 +89,16 @@ describe('Auth Controller', () => {
       };
       mockRequest.body = userData;
 
-      (bcrypt.hashSync as jest.Mock).mockReturnValue('hashedPassword');
-      (User.findOne as jest.Mock).mockResolvedValue(null);
+      (mockedBcrypt.hashSync as jest.Mock).mockReturnValue('hashedPassword');
+      (mockedUser.findOne as jest.Mock).mockResolvedValue(null);
       
-      const mockSave = jest.fn().mockResolvedValue({});
+      const mockSave = jest.fn().mockResolvedValue({} as any);
       (User.prototype.save as jest.Mock) = mockSave;
 
       await signup(mockRequest as any, mockResponse);
 
-      expect(User.findOne).toHaveBeenCalledWith({ email: userData.email });
-      expect(bcrypt.hashSync).toHaveBeenCalledWith(userData.password, 10);
+      expect(mockedUser.findOne).toHaveBeenCalledWith({ email: userData.email });
+      expect(mockedBcrypt.hashSync).toHaveBeenCalledWith(userData.password, 10);
       expect(mockSave).toHaveBeenCalled();
       expect(mockResponse.status).toHaveBeenCalledWith(statusCodes.created);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -109,7 +114,7 @@ describe('Auth Controller', () => {
       };
       mockRequest.body = userData;
 
-      (User.findOne as jest.Mock).mockResolvedValue({ email: userData.email });
+      (mockedUser.findOne as jest.Mock).mockResolvedValue({ email: userData.email });
 
       await signup(mockRequest as any, mockResponse);
 
@@ -127,7 +132,7 @@ describe('Auth Controller', () => {
       };
       mockRequest.body = userData;
 
-      (User.findOne as jest.Mock).mockRejectedValue(new Error('Database error'));
+      (mockedUser.findOne as jest.Mock).mockRejectedValue(new Error('Database error'));
 
       await signup(mockRequest as any, mockResponse);
 
@@ -147,7 +152,7 @@ describe('Auth Controller', () => {
       mockRequest.body = userData;
 
       const mockLean = jest.fn().mockResolvedValue(null);
-      (User.findOne as jest.Mock).mockReturnValue({ lean: mockLean });
+      (mockedUser.findOne as jest.Mock).mockReturnValue({ lean: mockLean });
 
       await signin(mockRequest as any, mockResponse);
 
@@ -171,8 +176,8 @@ describe('Auth Controller', () => {
       };
 
       const mockLean = jest.fn().mockResolvedValue(mockUser);
-      (User.findOne as jest.Mock).mockReturnValue({ lean: mockLean });
-      (bcrypt.compareSync as jest.Mock).mockReturnValue(false);
+      (mockedUser.findOne as jest.Mock).mockReturnValue({ lean: mockLean });
+      (mockedBcrypt.compareSync as jest.Mock).mockReturnValue(false);
 
       await signin(mockRequest as any, mockResponse);
 
@@ -197,9 +202,9 @@ describe('Auth Controller', () => {
       };
 
       const mockLean = jest.fn().mockResolvedValue(mockUser);
-      (User.findOne as jest.Mock).mockReturnValue({ lean: mockLean });
-      (bcrypt.compareSync as jest.Mock).mockReturnValue(true);
-      (jwt.sign as jest.Mock).mockReturnValue('test-token');
+      (mockedUser.findOne as jest.Mock).mockReturnValue({ lean: mockLean });
+      (mockedBcrypt.compareSync as jest.Mock).mockReturnValue(true);
+      (mockedJwt.sign as jest.Mock).mockReturnValue('test-token');
 
       await signin(mockRequest as any, mockResponse);
 
@@ -222,7 +227,7 @@ describe('Auth Controller', () => {
       mockRequest.body = userData;
 
       const mockLean = jest.fn().mockRejectedValue(new Error('Database error'));
-      (User.findOne as jest.Mock).mockReturnValue({ lean: mockLean });
+      (mockedUser.findOne as jest.Mock).mockReturnValue({ lean: mockLean });
 
       await signin(mockRequest as any, mockResponse);
 
@@ -243,11 +248,11 @@ describe('Auth Controller', () => {
       };
 
       const mockLean = jest.fn().mockResolvedValue(mockUser);
-      (User.findById as jest.Mock).mockReturnValue({ lean: mockLean });
+      (mockedUser.findById as jest.Mock).mockReturnValue({ lean: mockLean });
 
       await getProfile(castToCustomRequest(mockRequest), mockResponse);
 
-      expect(User.findById).toHaveBeenCalledWith(
+      expect(mockedUser.findById).toHaveBeenCalledWith(
         mockRequest.session.user?._id,
         { password: 0, __v: 0 }
       );
@@ -259,7 +264,7 @@ describe('Auth Controller', () => {
 
     it('should return error if user not found', async () => {
       const mockLean = jest.fn().mockResolvedValue(null);
-      (User.findById as jest.Mock).mockReturnValue({ lean: mockLean });
+      (mockedUser.findById as jest.Mock).mockReturnValue({ lean: mockLean });
 
       await getProfile(castToCustomRequest(mockRequest), mockResponse);
 
