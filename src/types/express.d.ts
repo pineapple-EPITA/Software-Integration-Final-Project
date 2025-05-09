@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { Session } from 'express-session';
+import { Session, SessionData } from 'express-session';
 
 declare global {
   namespace Express {
@@ -25,17 +25,22 @@ declare global {
   }
 }
 
-export interface CustomRequest extends Request {
-  user?: {
-    _id: string;
-    email: string;
-  };
-  session?: Session & {
+declare module 'express-session' {
+  interface SessionData {
     user?: {
-      _id: string;
+      _id?: string;
+      id?: string;
       email: string;
     };
-    destroy: (callback?: (err: any) => void) => void;
+  }
+}
+
+interface CustomRequest extends Request {
+  session: Session & Partial<SessionData>;
+  user?: {
+    _id?: string;
+    id?: string;
+    email: string;
   };
 }
 
