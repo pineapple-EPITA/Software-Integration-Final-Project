@@ -28,11 +28,13 @@ jest.mock('winston', () => ({
     error: jest.fn(),
     warn: jest.fn(),
     debug: jest.fn(),
+    add: jest.fn(),
   }),
   format: {
     combine: jest.fn(),
-    timestamp: jest.fn(),
+    timestamp: jest.fn().mockReturnValue('timestamp'),
     printf: jest.fn(),
+    simple: jest.fn().mockReturnValue('simple'),
   },
   transports: {
     Console: jest.fn(),
@@ -55,4 +57,4 @@ afterAll(async () => {
 // Reset mocks before each test
 beforeEach(() => {
   jest.clearAllMocks();
-}); 
+});
