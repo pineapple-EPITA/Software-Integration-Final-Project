@@ -14,9 +14,9 @@
     "start:release": "NODE_ENV=release ts-node src/boot/setup.ts",
     "start:pprod": "NODE_ENV=pprod ts-node src/boot/setup.ts",
     "start:prod": "NODE_ENV=prod ts-node src/boot/setup.ts",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test": "jest --config jest.config.cjs",
+    "test:watch": "jest --watch --config jest.config.cjs",
+    "test:coverage": "jest --coverage --config jest.config.cjs"
   },
   "keywords": [],
   "author": "",
