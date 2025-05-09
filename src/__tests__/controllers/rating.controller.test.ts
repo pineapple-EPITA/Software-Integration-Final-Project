@@ -57,6 +57,14 @@ describe('Rating Controller', () => {
         { rating: 5.0 },
       ];
 
+      const mockRatingInstance = {
+        save: jest.fn().mockResolvedValue({
+          email: 'test@example.com',
+          movie_id: 123,
+          rating: 4.5,
+        }),
+      };
+      (ratingModel as jest.Mock).mockImplementation(() => mockRatingInstance);
       (ratingModel.find as jest.Mock).mockResolvedValue(mockRatings);
       (pool.query as jest.Mock).mockResolvedValue({ rows: [] });
 
@@ -67,6 +75,7 @@ describe('Rating Controller', () => {
         movie_id: 123,
         rating: 4.5,
       });
+      expect(mockRatingInstance.save).toHaveBeenCalled();
       expect(ratingModel.find).toHaveBeenCalledWith({}, { rating: 4.5 });
       expect(pool.query).toHaveBeenCalledWith(
         'UPDATE movies SET rating = $1 WHERE movie_id = $2;',
@@ -107,6 +116,14 @@ describe('Rating Controller', () => {
         { rating: 5.0 },
       ];
 
+      const mockRatingInstance = {
+        save: jest.fn().mockResolvedValue({
+          email: 'test@example.com',
+          movie_id: 123,
+          rating: 4.5,
+        }),
+      };
+      (ratingModel as jest.Mock).mockImplementation(() => mockRatingInstance);
       (ratingModel.find as jest.Mock).mockResolvedValue(mockRatings);
       (pool.query as jest.Mock).mockRejectedValue(new Error('Database error'));
 
