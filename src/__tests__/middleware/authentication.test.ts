@@ -45,8 +45,11 @@ describe('Authentication Middleware', () => {
 
   it('should return 401 if token is invalid', () => {
     (mockRequest.header as jest.Mock).mockReturnValue('Bearer invalid-token');
+
+    // Create a JWT error that will be recognized as JsonWebTokenError
+    const jwtError = new jwt.JsonWebTokenError('Invalid token');
     (jwt.verify as jest.Mock).mockImplementation(() => {
-      throw new Error('Invalid token');
+      throw jwtError;
     });
 
     verifyToken(mockRequest as Request, mockResponse as Response, nextFunction);
@@ -62,14 +65,18 @@ describe('Authentication Middleware', () => {
     verifyToken(mockRequest as Request, mockResponse as Response, nextFunction);
 
     expect(mockResponse.status).toHaveBeenCalledWith(401);
-    expect(mockResponse.json).toHaveBeenCalledWith({ error: 'Invalid token' });
+    expect(mockResponse.json).toHaveBeenCalledWith({
+      error: 'Invalid token format',
+    });
     expect(nextFunction).not.toHaveBeenCalled();
   });
 
   it('should call next() if token is valid', () => {
     const user = { id: '123', email: 'test@example.com' };
     (mockRequest.header as jest.Mock).mockReturnValue('Bearer valid-token');
-    (jwt.verify as jest.Mock).mockReturnValue(user);
+    (jwt.verify as jest.Mock).mockReturnValue({
+      user: user,
+    });
 
     verifyToken(mockRequest as Request, mockResponse as Response, nextFunction);
 
@@ -78,4 +85,4 @@ describe('Authentication Middleware', () => {
     expect(mockResponse.json).not.toHaveBeenCalled();
     expect(nextFunction).toHaveBeenCalled();
   });
-}); 
+});
