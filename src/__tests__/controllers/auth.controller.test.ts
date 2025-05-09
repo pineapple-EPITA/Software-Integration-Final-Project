@@ -13,16 +13,25 @@ import { CustomRequest } from '../../types/express';
 // Mock the models and functions
 jest.mock('bcrypt');
 jest.mock('jsonwebtoken');
+
+// Create a mock implementation for the User constructor
+const mockSave = jest.fn().mockResolvedValue({} as any);
+
 jest.mock('../../models/userModel', () => {
+  // Mock implementation of the constructor function
+  const MockUser = jest.fn().mockImplementation(() => {
+    return {
+      save: mockSave
+    };
+  });
+  
+  // Add static methods to the constructor
+  MockUser.findOne = jest.fn();
+  MockUser.findById = jest.fn();
+  
   return {
     __esModule: true,
-    default: {
-      findOne: jest.fn(),
-      findById: jest.fn(),
-      prototype: {
-        save: jest.fn(),
-      },
-    },
+    default: MockUser
   };
 });
 
@@ -74,6 +83,9 @@ describe('Auth Controller', () => {
 
     mockResponse = createMockResponse() as unknown as Response;
     process.env.JWT_SECRET = 'test-secret-key';
+    
+    // Reset all mocks before each test
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
@@ -91,9 +103,6 @@ describe('Auth Controller', () => {
 
       (mockedBcrypt.hashSync as jest.Mock).mockReturnValue('hashedPassword');
       (mockedUser.findOne as jest.Mock).mockResolvedValue(null);
-      
-      const mockSave = jest.fn().mockResolvedValue({} as any);
-      (User.prototype.save as jest.Mock) = mockSave;
 
       await signup(mockRequest as any, mockResponse);
 
