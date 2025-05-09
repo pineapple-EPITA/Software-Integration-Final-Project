@@ -11,7 +11,10 @@
     "start:dev": "NODE_ENV=dev node src/boot/setup.js",
     "start:release": "NODE_ENV=release node src/boot/setup.js",
     "start:pprod": "NODE_ENV=pprod node src/boot/setup.js",
-    "start:prod": "NODE_ENV=prod node src/boot/setup.js"
+    "start:prod": "NODE_ENV=prod node src/boot/setup.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "keywords": [],
   "author": "",
@@ -34,14 +37,20 @@
     "@commitlint/cli": "^19.8.0",
     "@commitlint/config-conventional": "^19.8.0",
     "@eslint/js": "^9.25.1",
+    "@types/jest": "^29.5.12",
+    "@types/mongoose": "^5.11.97",
+    "@types/node": "^20.11.24",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
+    "dotenv": "^16.4.5",
     "eslint": "^9.25.1",
     "eslint-plugin-react": "^7.37.5",
     "globals": "^16.0.0",
     "husky": "^9.1.7",
+    "jest": "^29.7.0",
     "nodemon": "^3.1.9",
     "prettier": "^3.5.3",
+    "ts-jest": "^29.1.2",
     "typescript-eslint": "^8.31.1"
   }
 }
