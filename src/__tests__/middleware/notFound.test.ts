@@ -1,18 +1,17 @@
+import { Request, Response } from 'express';
 import notFound from '../../middleware/notFound';
 
 describe('Not Found Middleware', () => {
-  const mockRequest = () => {
+  const mockRequest = (): Partial<Request> => {
     return {};
   };
 
-  const mockResponse = () => {
-    const res = {};
+  const mockResponse = (): Partial<Response> => {
+    const res: Partial<Response> = {};
     res.status = jest.fn().mockReturnValue(res);
     res.json = jest.fn().mockReturnValue(res);
     return res;
   };
-
-  const nextFunction = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -22,7 +21,7 @@ describe('Not Found Middleware', () => {
     const req = mockRequest();
     const res = mockResponse();
 
-    notFound(req, res, nextFunction);
+    notFound(req as Request, res as Response);
 
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({
@@ -30,6 +29,5 @@ describe('Not Found Middleware', () => {
         message: 'Not Found',
       },
     });
-    expect(nextFunction).not.toHaveBeenCalled();
   });
 }); 

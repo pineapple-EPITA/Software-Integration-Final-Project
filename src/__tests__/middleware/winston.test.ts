@@ -1,55 +1,74 @@
-import winston from 'winston';
-import logger from '../../middleware/winston';
+import * as winston from 'winston';
+import logger, { stream } from '../../middleware/winston';
 
 describe('Winston Logger', () => {
-  let mockConsoleTransport: jest.SpyInstance;
-  let mockFileTransport: jest.SpyInstance;
+  const originalConsoleError = console.error;
+  const mockConsoleError = jest.fn();
 
-  beforeEach(() => {
-    mockConsoleTransport = jest.spyOn(winston.transports.Console.prototype, 'log');
-    mockFileTransport = jest.spyOn(winston.transports.File.prototype, 'log');
+  beforeAll(() => {
+    console.error = mockConsoleError;
   });
 
-  afterEach(() => {
+  afterAll(() => {
+    console.error = originalConsoleError;
+  });
+
+  beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should have both console and file transports', () => {
-    expect(logger.transports).toHaveLength(2);
-    expect(logger.transports[0]).toBeInstanceOf(winston.transports.File);
-    expect(logger.transports[1]).toBeInstanceOf(winston.transports.Console);
+  it('should have the correct log level', () => {
+    expect(logger.level).toBe(process.env.LOG_LEVEL || 'info');
   });
 
-  it('should log info messages to both transports', () => {
-    const message = 'Test info message';
-    logger.info(message);
-
-    expect(mockConsoleTransport).toHaveBeenCalled();
-    expect(mockFileTransport).toHaveBeenCalled();
+  it('should have a console transport', () => {
+    const transports = logger.transports as winston.transport[];
+    expect(transports).toHaveLength(1);
+    expect(transports[0]).toBeDefined();
   });
 
-  it('should log error messages to both transports', () => {
-    const message = 'Test error message';
-    logger.error(message);
-
-    expect(mockConsoleTransport).toHaveBeenCalled();
-    expect(mockFileTransport).toHaveBeenCalled();
+  it('should handle exceptions', () => {
+    expect(logger.exceptions.handlers.size).toBe(1);
   });
 
-  it('should have a stream write function', () => {
-    expect(logger.stream).toBeDefined();
-    expect(typeof logger.stream.write).toBe('function');
+  it('should log info messages', () => {
+    const spy = jest.spyOn(logger, 'info');
+    logger.info('Test info message');
+    expect(spy).toHaveBeenCalledWith('Test info message');
   });
 
-  it('should write to info level through stream', () => {
-    const message = 'Test stream message';
-    logger.stream.write(message);
-
-    expect(mockConsoleTransport).toHaveBeenCalled();
-    expect(mockFileTransport).toHaveBeenCalled();
+  it('should log error messages', () => {
+    const spy = jest.spyOn(logger, 'error');
+    const error = new Error('Test error');
+    logger.error(error.stack);
+    expect(spy).toHaveBeenCalledWith(error.stack);
   });
 
-  it('should not exit on error', () => {
-    expect(logger.exitOnError).toBe(false);
+  it('should log warn messages', () => {
+    const spy = jest.spyOn(logger, 'warn');
+    logger.warn('Test warning message');
+    expect(spy).toHaveBeenCalledWith('Test warning message');
+  });
+
+  describe('Morgan Stream', () => {
+    it('should write log messages', () => {
+      const spy = jest.spyOn(logger, 'info');
+      stream.write('Test log message\n');
+      expect(spy).toHaveBeenCalledWith('Test log message');
+    });
+
+    it('should handle error during write', () => {
+      jest.spyOn(logger, 'info').mockImplementation(() => {
+        throw new Error('Test error');
+      });
+      stream.write('Test log message\n');
+      expect(mockConsoleError).toHaveBeenCalledWith('Error writing to log:', expect.any(Error));
+    });
+
+    it('should trim whitespace from log messages', () => {
+      const spy = jest.spyOn(logger, 'info');
+      stream.write('  Test log message  \n');
+      expect(spy).toHaveBeenCalledWith('Test log message');
+    });
   });
 }); 

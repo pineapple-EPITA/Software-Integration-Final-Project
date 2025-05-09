@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-interface IRating extends Document {
+export interface IRating extends Document {
   movie_id: number;
   email: string;
   rating: number;
@@ -16,11 +16,14 @@ const ratingSchema = new Schema<IRating>(
     email: {
       type: String,
       required: [true, 'Email is required'],
+      trim: true,
+      lowercase: true,
+      match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email address'],
     },
     rating: {
       type: Number,
-      min: 0,
-      max: 5,
+      min: [0, 'Rating must be at least 0'],
+      max: [5, 'Rating cannot exceed 5'],
       required: [true, 'rating is required'],
     },
   },

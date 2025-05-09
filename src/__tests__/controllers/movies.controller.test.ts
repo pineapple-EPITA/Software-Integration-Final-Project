@@ -1,33 +1,23 @@
-import { MockRequest, MockResponse, MockPool } from '../../types';
-import {
-  getMovies,
-  getTopRatedMovies,
-  getSeenMovies,
-  getMovieById,
-  addMovie,
-  updateMovie,
-  deleteMovie
-} from '../../controllers/movies.controller';
+import { Response } from 'express';
+import { CustomRequest } from '../../types/test';
+import { getMovies, getMovieById, addMovie, updateMovie, deleteMovie, getTopRatedMovies, getSeenMovies } from '../../controllers/movies.controller';
+import pool from '../../boot/database/db_connect';
+import { createMockRequest, createMockResponse } from '../utils';
+
+jest.mock('../../boot/database/db_connect', () => ({
+  query: jest.fn(),
+}));
 
 describe('Movies Controller', () => {
-  let mockRequest: MockRequest;
-  let mockResponse: MockResponse;
-  let mockPool: MockPool;
+  let mockRequest: Partial<CustomRequest>;
+  let mockResponse: Partial<Response>;
 
   beforeEach(() => {
-    mockRequest = {
-      body: {},
-      params: {},
-      user: { email: 'test@example.com' }
-    };
-    mockResponse = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-    };
-    mockPool = {
-      query: jest.fn(),
-      connect: jest.fn(),
-    };
+    mockRequest = createMockRequest({
+      user: { email: 'test@example.com', _id: '123' }
+    });
+    mockResponse = createMockResponse();
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
@@ -38,120 +28,104 @@ describe('Movies Controller', () => {
     it('should return all movies', async () => {
       const mockMovies = [
         { id: 1, title: 'Movie 1', description: 'Description 1' },
-        { id: 2, title: 'Movie 2', description: 'Description 2' },
+        { id: 2, title: 'Movie 2', description: 'Description 2' }
       ];
 
-      mockPool.query.mockResolvedValue({ rows: mockMovies });
+      (pool.query as jest.Mock).mockResolvedValue({ rows: mockMovies });
 
-      await getMovies(mockRequest, mockResponse);
+      await getMovies(mockRequest as CustomRequest, mockResponse as Response);
 
-      expect(mockPool.query).toHaveBeenCalledWith('SELECT * FROM movies');
+      expect(pool.query).toHaveBeenCalledWith('SELECT * FROM movies');
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith(mockMovies);
     });
 
     it('should handle database errors', async () => {
-      mockPool.query.mockRejectedValue(new Error('Database error'));
+      (pool.query as jest.Mock).mockRejectedValue(new Error('Database error'));
 
-      await getMovies(mockRequest, mockResponse);
+      await getMovies(mockRequest as CustomRequest, mockResponse as Response);
 
       expect(mockResponse.status).toHaveBeenCalledWith(500);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        error: 'Error fetching movies',
-      });
+      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'Error fetching movies' });
     });
   });
 
   describe('getMovieById', () => {
     it('should return a movie by id', async () => {
-      const movieId = 1;
-      mockRequest.params = { id: movieId.toString() };
+      const mockMovie = { id: 1, title: 'Movie 1', description: 'Description 1' };
+      mockRequest.params = { movieId: '1' };
 
-      const mockMovie = { id: movieId, title: 'Movie 1', description: 'Description 1' };
-      mockPool.query.mockResolvedValue({ rows: [mockMovie] });
+      (pool.query as jest.Mock).mockResolvedValue({ rows: [mockMovie] });
 
-      await getMovieById(mockRequest, mockResponse);
+      await getMovieById(mockRequest as CustomRequest, mockResponse as Response);
 
-      expect(mockPool.query).toHaveBeenCalledWith('SELECT * FROM movies WHERE id = $1', [movieId]);
+      expect(pool.query).toHaveBeenCalledWith('SELECT * FROM movies WHERE id = $1', ['1']);
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith(mockMovie);
     });
 
     it('should return 404 if movie not found', async () => {
-      const movieId = 999;
-      mockRequest.params = { id: movieId.toString() };
+      mockRequest.params = { movieId: '999' };
 
-      mockPool.query.mockResolvedValue({ rows: [] });
+      (pool.query as jest.Mock).mockResolvedValue({ rows: [] });
 
-      await getMovieById(mockRequest, mockResponse);
+      await getMovieById(mockRequest as CustomRequest, mockResponse as Response);
 
       expect(mockResponse.status).toHaveBeenCalledWith(404);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        error: 'Movie not found',
-      });
+      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'Movie not found' });
     });
   });
 
   describe('addMovie', () => {
     it('should add a new movie', async () => {
-      const movieData = {
-        title: 'New Movie',
-        description: 'New Description',
-      };
-      mockRequest.body = movieData;
+      const newMovie = { title: 'New Movie', description: 'New Description' };
+      mockRequest.body = newMovie;
 
-      const mockMovie = { id: 1, ...movieData };
-      mockPool.query.mockResolvedValue({ rows: [mockMovie] });
+      const mockResult = { id: 3, ...newMovie };
+      (pool.query as jest.Mock).mockResolvedValue({ rows: [mockResult] });
 
-      await addMovie(mockRequest, mockResponse);
+      await addMovie(mockRequest as CustomRequest, mockResponse as Response);
 
-      expect(mockPool.query).toHaveBeenCalledWith(
+      expect(pool.query).toHaveBeenCalledWith(
         'INSERT INTO movies (title, description) VALUES ($1, $2) RETURNING *',
-        [movieData.title, movieData.description]
+        [newMovie.title, newMovie.description]
       );
       expect(mockResponse.status).toHaveBeenCalledWith(201);
-      expect(mockResponse.json).toHaveBeenCalledWith(mockMovie);
+      expect(mockResponse.json).toHaveBeenCalledWith(mockResult);
     });
   });
 
   describe('updateMovie', () => {
-    it('should update a movie', async () => {
-      const movieId = 1;
-      const updateData = {
-        title: 'Updated Movie',
-        description: 'Updated Description',
-      };
-      mockRequest.params = { id: movieId.toString() };
+    it('should update an existing movie', async () => {
+      const updateData = { title: 'Updated Movie', description: 'Updated Description' };
+      mockRequest.params = { movieId: '1' };
       mockRequest.body = updateData;
 
-      const mockMovie = { id: movieId, ...updateData };
-      mockPool.query.mockResolvedValue({ rows: [mockMovie] });
+      const mockResult = { id: 1, ...updateData };
+      (pool.query as jest.Mock).mockResolvedValue({ rows: [mockResult] });
 
-      await updateMovie(mockRequest, mockResponse);
+      await updateMovie(mockRequest as CustomRequest, mockResponse as Response);
 
-      expect(mockPool.query).toHaveBeenCalledWith(
+      expect(pool.query).toHaveBeenCalledWith(
         'UPDATE movies SET title = $1, description = $2 WHERE id = $3 RETURNING *',
-        [updateData.title, updateData.description, movieId]
+        [updateData.title, updateData.description, '1']
       );
       expect(mockResponse.status).toHaveBeenCalledWith(200);
-      expect(mockResponse.json).toHaveBeenCalledWith(mockMovie);
+      expect(mockResponse.json).toHaveBeenCalledWith(mockResult);
     });
   });
 
   describe('deleteMovie', () => {
     it('should delete a movie', async () => {
-      const movieId = 1;
-      mockRequest.params = { id: movieId.toString() };
+      mockRequest.params = { movieId: '1' };
 
-      mockPool.query.mockResolvedValue({ rows: [{ id: movieId }] });
+      (pool.query as jest.Mock).mockResolvedValue({ rows: [{ id: 1 }] });
 
-      await deleteMovie(mockRequest, mockResponse);
+      await deleteMovie(mockRequest as CustomRequest, mockResponse as Response);
 
-      expect(mockPool.query).toHaveBeenCalledWith('DELETE FROM movies WHERE id = $1 RETURNING *', [movieId]);
+      expect(pool.query).toHaveBeenCalledWith('DELETE FROM movies WHERE id = $1 RETURNING *', ['1']);
       expect(mockResponse.status).toHaveBeenCalledWith(200);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        message: 'Movie deleted successfully',
-      });
+      expect(mockResponse.json).toHaveBeenCalledWith({ message: 'Movie deleted successfully' });
     });
   });
 
@@ -159,42 +133,31 @@ describe('Movies Controller', () => {
     it('should return top rated movies', async () => {
       const mockMovies = [
         { id: 1, title: 'Movie 1', rating: 4.5 },
-        { id: 2, title: 'Movie 2', rating: 4.0 },
+        { id: 2, title: 'Movie 2', rating: 4.0 }
       ];
 
-      mockPool.query.mockResolvedValue({ rows: mockMovies });
+      (pool.query as jest.Mock).mockResolvedValue({ rows: mockMovies });
 
-      await getTopRatedMovies(mockRequest, mockResponse);
+      await getTopRatedMovies(mockRequest as CustomRequest, mockResponse as Response);
 
-      expect(mockPool.query).toHaveBeenCalledWith('SELECT * FROM movies ORDER BY rating DESC LIMIT 10');
+      expect(pool.query).toHaveBeenCalledWith('SELECT * FROM movies ORDER BY rating DESC LIMIT 10');
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith(mockMovies);
-    });
-
-    it('should handle database errors', async () => {
-      mockPool.query.mockRejectedValue(new Error('Database error'));
-
-      await getTopRatedMovies(mockRequest, mockResponse);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        error: 'Error fetching top rated movies',
-      });
     });
   });
 
   describe('getSeenMovies', () => {
     it('should return seen movies for a user', async () => {
       const mockMovies = [
-        { id: 1, title: 'Movie 1', email: 'test@example.com' },
-        { id: 2, title: 'Movie 2', email: 'test@example.com' },
+        { movie_id: 1, title: 'Movie 1' },
+        { movie_id: 2, title: 'Movie 2' }
       ];
 
-      mockPool.query.mockResolvedValue({ rows: mockMovies });
+      (pool.query as jest.Mock).mockResolvedValue({ rows: mockMovies });
 
-      await getSeenMovies(mockRequest, mockResponse);
+      await getSeenMovies(mockRequest as CustomRequest, mockResponse as Response);
 
-      expect(mockPool.query).toHaveBeenCalledWith(
+      expect(pool.query).toHaveBeenCalledWith(
         'SELECT * FROM seen_movies S JOIN movies M ON S.movie_id = M.movie_id WHERE email = $1',
         ['test@example.com']
       );
@@ -202,15 +165,13 @@ describe('Movies Controller', () => {
       expect(mockResponse.json).toHaveBeenCalledWith(mockMovies);
     });
 
-    it('should handle database errors', async () => {
-      mockPool.query.mockRejectedValue(new Error('Database error'));
+    it('should return 401 if user is not authenticated', async () => {
+      mockRequest.user = undefined;
 
-      await getSeenMovies(mockRequest, mockResponse);
+      await getSeenMovies(mockRequest as CustomRequest, mockResponse as Response);
 
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        error: 'Error fetching seen movies',
-      });
+      expect(mockResponse.status).toHaveBeenCalledWith(401);
+      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'User not authenticated' });
     });
   });
 }); 

@@ -1,77 +1,111 @@
+import { Request, Response, NextFunction } from 'express';
 import validator from '../../middleware/validator';
+import { statusCodes } from '../../constants/statusCodes';
 
 describe('Validator Middleware', () => {
-  const mockRequest = () => {
-    return {
-      body: {},
-    };
-  };
-
-  const mockResponse = () => {
-    const res = {};
-    res.status = jest.fn().mockReturnValue(res);
-    res.json = jest.fn().mockReturnValue(res);
-    return res;
-  };
-
-  const nextFunction = jest.fn();
+  let mockRequest: Partial<Request>;
+  let mockResponse: Partial<Response>;
+  let nextFunction: NextFunction = jest.fn();
 
   beforeEach(() => {
+    mockRequest = {
+      body: {},
+    };
+    mockResponse = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn().mockReturnThis(),
+    };
+  });
+
+  afterEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should remove existing creation_date and set new one', () => {
-    const req = mockRequest();
-    const res = mockResponse();
-    req.body = {
-      creation_date: '2023-01-01',
+  it('should add creation_date to request body', () => {
+    const today = new Date().toJSON().slice(0, 10);
+    mockRequest.body = {
       name: 'Test',
+      description: 'Test Description',
     };
 
-    validator(req, res, nextFunction);
+    validator(mockRequest as Request, mockResponse as Response, nextFunction);
 
-    expect(req.body.creation_date).not.toBe('2023-01-01');
-    expect(req.body.creation_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(mockRequest.body.creation_date).toBe(today);
     expect(nextFunction).toHaveBeenCalled();
   });
 
-  it('should convert empty strings to null', () => {
-    const req = mockRequest();
-    const res = mockResponse();
-    req.body = {
+  it('should override existing creation_date in request body', () => {
+    const today = new Date().toJSON().slice(0, 10);
+    mockRequest.body = {
+      name: 'Test',
+      description: 'Test Description',
+      creation_date: '2020-01-01',
+    };
+
+    validator(mockRequest as Request, mockResponse as Response, nextFunction);
+
+    expect(mockRequest.body.creation_date).toBe(today);
+    expect(nextFunction).toHaveBeenCalled();
+  });
+
+  it('should convert empty string values to null', () => {
+    mockRequest.body = {
       name: '',
-      description: 'Test description',
-      emptyField: '',
+      description: 'Test Description',
+      tags: '',
     };
 
-    validator(req, res, nextFunction);
+    validator(mockRequest as Request, mockResponse as Response, nextFunction);
 
-    expect(req.body.name).toBeNull();
-    expect(req.body.description).toBe('Test description');
-    expect(req.body.emptyField).toBeNull();
+    expect(mockRequest.body.name).toBeNull();
+    expect(mockRequest.body.description).toBe('Test Description');
+    expect(mockRequest.body.tags).toBeNull();
     expect(nextFunction).toHaveBeenCalled();
   });
 
-  it('should handle empty body', () => {
-    const req = mockRequest();
-    const res = mockResponse();
-    req.body = {};
+  it('should handle nested objects with empty strings', () => {
+    mockRequest.body = {
+      name: 'Test',
+      details: {
+        category: '',
+        description: 'Test Description',
+      },
+    };
 
-    validator(req, res, nextFunction);
+    validator(mockRequest as Request, mockResponse as Response, nextFunction);
 
-    expect(req.body.creation_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(mockRequest.body.details.category).toBeNull();
+    expect(mockRequest.body.details.description).toBe('Test Description');
     expect(nextFunction).toHaveBeenCalled();
   });
 
-  it('should handle error and return 400', () => {
-    const req = mockRequest();
-    const res = mockResponse();
-    req.body = null; // This will cause an error when trying to iterate
+  it('should handle arrays with empty strings', () => {
+    mockRequest.body = {
+      name: 'Test',
+      tags: ['', 'tag1', '', 'tag2'],
+    };
 
-    validator(req, res, nextFunction);
+    validator(mockRequest as Request, mockResponse as Response, nextFunction);
 
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({ error: 'Bad request' });
+    expect(mockRequest.body.tags).toEqual([null, 'tag1', null, 'tag2']);
+    expect(nextFunction).toHaveBeenCalled();
+  });
+
+  it('should handle error during validation', () => {
+    // Create a body with a property that will throw an error when accessed
+    Object.defineProperty(mockRequest.body, 'problematic', {
+      get() {
+        throw new Error('Test error');
+      },
+    });
+
+    validator(mockRequest as Request, mockResponse as Response, nextFunction);
+
+    expect(mockResponse.status).toHaveBeenCalledWith(statusCodes.badRequest);
+    expect(mockResponse.json).toHaveBeenCalledWith({
+      error: 'Invalid request data',
+      details: 'Test error',
+    });
     expect(nextFunction).not.toHaveBeenCalled();
   });
 }); 

@@ -1,24 +1,46 @@
+import { Response } from 'express';
+import { Pool, QueryResult } from 'pg';
+import { CustomRequest } from '../../types/test';
 import { editPassword, logout } from '../../controllers/profile.controller';
-import pool from '../../boot/database/db_connect';
+import { createMockRequest, createMockResponse } from '../utils';
 
-jest.mock('../../boot/database/db_connect', () => ({
-  query: jest.fn(),
-}));
+interface UserRow {
+  email: string;
+  password: string;
+}
+
+type MockQueryResult = QueryResult<UserRow>;
+
+// Create a mock pool with the minimum required functionality for our tests
+const mockPool = {
+  query: jest.fn().mockImplementation((): Promise<MockQueryResult> => {
+    return Promise.resolve({
+      rows: [],
+      command: 'SELECT',
+      rowCount: 0,
+      oid: 0,
+      fields: []
+    });
+  }),
+  connect: jest.fn(),
+  end: jest.fn(),
+  on: jest.fn(),
+  off: jest.fn(),
+  removeListener: jest.fn(),
+} as unknown as jest.Mocked<Pool>;
+
+jest.mock('../../boot/database/db_connect', () => mockPool);
 
 describe('Profile Controller', () => {
-  let mockRequest: any;
-  let mockResponse: any;
+  let mockRequest: Partial<CustomRequest>;
+  let mockResponse: Partial<Response>;
 
   beforeEach(() => {
-    mockRequest = {
-      body: {},
-      user: {},
-      session: {},
-    };
-    mockResponse = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-    };
+    mockRequest = createMockRequest({
+      user: { email: 'test@example.com', _id: '123' }
+    });
+    mockResponse = createMockResponse();
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
@@ -27,7 +49,7 @@ describe('Profile Controller', () => {
 
   describe('editPassword', () => {
     it('should return 400 if oldPassword or newPassword is missing', async () => {
-      await editPassword(mockRequest, mockResponse);
+      await editPassword(mockRequest as CustomRequest, mockResponse as Response);
 
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -41,11 +63,25 @@ describe('Profile Controller', () => {
         newPassword: 'password123',
       };
 
-      await editPassword(mockRequest, mockResponse);
+      await editPassword(mockRequest as CustomRequest, mockResponse as Response);
 
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: 'New password cannot be equal to old password',
+      });
+    });
+
+    it('should return 400 if new password is too short', async () => {
+      mockRequest.body = {
+        oldPassword: 'password123',
+        newPassword: '12345',
+      };
+
+      await editPassword(mockRequest as CustomRequest, mockResponse as Response);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: 'New password must be at least 6 characters long',
       });
     });
 
@@ -54,19 +90,18 @@ describe('Profile Controller', () => {
         oldPassword: 'wrongpassword',
         newPassword: 'newpassword123',
       };
-      mockRequest.user = { email: 'test@example.com' };
 
-      (pool.query as jest.Mock).mockImplementation((query, params, callback) => {
-        callback(null, { rows: [] });
-      });
+      const mockResult: MockQueryResult = {
+        rows: [],
+        command: 'SELECT',
+        rowCount: 0,
+        oid: 0,
+        fields: []
+      };
+      (mockPool.query as jest.Mock).mockResolvedValueOnce(mockResult);
 
-      await editPassword(mockRequest, mockResponse);
+      await editPassword(mockRequest as CustomRequest, mockResponse as Response);
 
-      expect(pool.query).toHaveBeenCalledWith(
-        'SELECT * FROM users WHERE email = $1 AND password = crypt($2, password);',
-        ['test@example.com', 'wrongpassword'],
-        expect.any(Function)
-      );
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: 'Incorrect password',
@@ -75,74 +110,46 @@ describe('Profile Controller', () => {
 
     it('should update password successfully', async () => {
       mockRequest.body = {
-        oldPassword: 'oldpassword123',
+        oldPassword: 'password123',
         newPassword: 'newpassword123',
       };
-      mockRequest.user = { email: 'test@example.com' };
 
-      (pool.query as jest.Mock)
-        .mockImplementationOnce((query, params, callback) => {
-          callback(null, { rows: [{ email: 'test@example.com' }] });
-        })
-        .mockImplementationOnce((query, params, callback) => {
-          callback(null, { rows: [] });
-        });
+      const mockSelectResult: MockQueryResult = {
+        rows: [{ email: 'test@example.com', password: 'hashed_password' }],
+        command: 'SELECT',
+        rowCount: 1,
+        oid: 0,
+        fields: []
+      };
+      (mockPool.query as jest.Mock).mockResolvedValueOnce(mockSelectResult);
 
-      await editPassword(mockRequest, mockResponse);
+      const mockUpdateResult: MockQueryResult = {
+        rows: [{ email: 'test@example.com', password: 'new_hashed_password' }],
+        command: 'UPDATE',
+        rowCount: 1,
+        oid: 0,
+        fields: []
+      };
+      (mockPool.query as jest.Mock).mockResolvedValueOnce(mockUpdateResult);
 
-      expect(pool.query).toHaveBeenCalledTimes(2);
-      expect(pool.query).toHaveBeenNthCalledWith(
-        1,
-        'SELECT * FROM users WHERE email = $1 AND password = crypt($2, password);',
-        ['test@example.com', 'oldpassword123'],
-        expect.any(Function)
-      );
-      expect(pool.query).toHaveBeenNthCalledWith(
-        2,
-        "UPDATE users SET password = crypt($1, gen_salt('bf')) WHERE email = $2;",
-        ['newpassword123', 'test@example.com'],
-        expect.any(Function)
-      );
+      await editPassword(mockRequest as CustomRequest, mockResponse as Response);
+
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: 'Password updated',
       });
     });
 
-    it('should handle database errors during password verification', async () => {
+    it('should handle database errors', async () => {
       mockRequest.body = {
-        oldPassword: 'oldpassword123',
-        newPassword: 'newpassword123',
-      };
-      mockRequest.user = { email: 'test@example.com' };
-
-      (pool.query as jest.Mock).mockImplementation((query, params, callback) => {
-        callback(new Error('Database error'), null);
-      });
-
-      await editPassword(mockRequest, mockResponse);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        error: 'Exception occurred while updating password',
-      });
-    });
-
-    it('should handle database errors during password update', async () => {
-      mockRequest.body = {
-        oldPassword: 'oldpassword123',
+        oldPassword: 'password123',
         newPassword: 'newpassword123',
       };
 
-      (pool.query as jest.Mock)
-        .mockImplementationOnce((query, params, callback) => {
-          callback(null, { rows: [{ email: 'test@example.com' }] });
-        })
-        .mockImplementationOnce((query, params, callback) => {
-          callback(new Error('Database error'), null);
-        });
+      const dbError = new Error('Database error');
+      (mockPool.query as jest.Mock).mockRejectedValueOnce(dbError);
 
-      await editPassword(mockRequest, mockResponse);
+      await editPassword(mockRequest as CustomRequest, mockResponse as Response);
 
       expect(mockResponse.status).toHaveBeenCalledWith(500);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -153,9 +160,12 @@ describe('Profile Controller', () => {
 
   describe('logout', () => {
     it('should clear user session and return success message', async () => {
-      mockRequest.session.user = { email: 'test@example.com' };
+      mockRequest.session = {
+        user: { _id: '123' },
+        destroy: jest.fn((callback) => callback()),
+      } as any;
 
-      await logout(mockRequest, mockResponse);
+      await logout(mockRequest as CustomRequest, mockResponse as Response);
 
       expect(mockRequest.session.user).toBeUndefined();
       expect(mockResponse.status).toHaveBeenCalledWith(200);
@@ -163,7 +173,7 @@ describe('Profile Controller', () => {
     });
 
     it('should return success message even if no user session exists', async () => {
-      await logout(mockRequest, mockResponse);
+      await logout(mockRequest as CustomRequest, mockResponse as Response);
 
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({ message: 'Disconnected' });

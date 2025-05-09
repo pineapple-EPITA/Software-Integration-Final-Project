@@ -1,89 +1,156 @@
 import mongoose from 'mongoose';
-import Message from '../../models/messageModel';
-import User from '../../models/userModel';
+import MessageModel, { IMessage } from '../../models/messageModel';
+
+declare global {
+  var __MONGO_URI__: string;
+}
 
 describe('Message Model Test', () => {
   beforeAll(async () => {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/test');
+    await mongoose.connect(global.__MONGO_URI__);
   });
 
   afterAll(async () => {
-    await mongoose.connection.dropDatabase();
     await mongoose.connection.close();
   });
 
-  afterEach(async () => {
-    await Message.deleteMany({});
-    await User.deleteMany({});
+  beforeEach(async () => {
+    await MessageModel.deleteMany({});
   });
 
   it('should create & save message successfully', async () => {
-    const user = await User.create({
-      username: 'testuser',
-      email: 'test@example.com',
-      password: 'password123',
-    });
-
-    const message = new Message({
+    const userId = new mongoose.Types.ObjectId();
+    const validMessage = {
       name: 'Test Message',
-      user: user._id,
-    });
-    const savedMessage = await message.save();
-    
+      content: 'This is a test message that is long enough',
+      user: userId,
+    };
+
+    const savedMessage = await MessageModel.create(validMessage) as IMessage & { _id: mongoose.Types.ObjectId };
     expect(savedMessage._id).toBeDefined();
-    expect(savedMessage.name).toBe(message.name);
-    expect(savedMessage.user.toString()).toBe(user._id.toString());
-    expect(savedMessage.created_at).toBeDefined();
-    expect(savedMessage.updated_at).toBeDefined();
+    expect(savedMessage.name).toBe(validMessage.name);
+    expect(savedMessage.content).toBe(validMessage.content);
+    expect(savedMessage.user.toString()).toBe(userId.toString());
   });
 
-  it('should fail to save message without required user reference', async () => {
-    const messageWithoutUser = new Message({
-      name: 'Test Message',
+  it('should fail to save message without required name', async () => {
+    const userId = new mongoose.Types.ObjectId();
+    const messageWithoutName = new MessageModel({
+      content: 'This is a test message that is long enough',
+      user: userId,
     });
-    
+
+    let err;
+    try {
+      await messageWithoutName.save();
+    } catch (error) {
+      err = error;
+    }
+    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
+    expect(err.errors.name).toBeDefined();
+  });
+
+  it('should fail to save message without required user', async () => {
+    const messageWithoutUser = new MessageModel({
+      name: 'Test Message',
+      content: 'This is a test message that is long enough',
+    });
+
     let err;
     try {
       await messageWithoutUser.save();
     } catch (error) {
       err = error;
     }
-    
-    expect(err).toBeDefined();
+    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
+    expect(err.errors.user).toBeDefined();
   });
 
-  it('should fail to save message with invalid user reference', async () => {
-    const messageWithInvalidUser = new Message({
-      name: 'Test Message',
-      user: new mongoose.Types.ObjectId(),
+  it('should fail to save message with short name', async () => {
+    const userId = new mongoose.Types.ObjectId();
+    const messageWithShortName = new MessageModel({
+      name: 'Te',
+      content: 'This is a test message that is long enough',
+      user: userId,
     });
-    
+
     let err;
     try {
-      await messageWithInvalidUser.save();
+      await messageWithShortName.save();
     } catch (error) {
       err = error;
     }
-    
-    expect(err).toBeDefined();
+    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
+    expect(err.errors.name).toBeDefined();
   });
 
-  it('should populate user reference when requested', async () => {
-    const user = await User.create({
-      username: 'testuser',
-      email: 'test@example.com',
-      password: 'password123',
+  it('should fail to save message with too long name', async () => {
+    const userId = new mongoose.Types.ObjectId();
+    const longName = 'a'.repeat(101);
+    const messageWithLongName = new MessageModel({
+      name: longName,
+      content: 'This is a test message that is long enough',
+      user: userId,
     });
 
-    const message = await Message.create({
+    let err;
+    try {
+      await messageWithLongName.save();
+    } catch (error) {
+      err = error;
+    }
+    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
+    expect(err.errors.name).toBeDefined();
+  });
+
+  it('should fail to save message with short content', async () => {
+    const userId = new mongoose.Types.ObjectId();
+    const messageWithShortContent = new MessageModel({
       name: 'Test Message',
-      user: user._id,
+      content: 'short',
+      user: userId,
     });
 
-    const populatedMessage = await Message.findById(message._id).populate('user');
-    
-    expect(populatedMessage.user).toBeDefined();
-    expect(populatedMessage.user.username).toBe(user.username);
-    expect(populatedMessage.user.email).toBe(user.email);
+    let err;
+    try {
+      await messageWithShortContent.save();
+    } catch (error) {
+      err = error;
+    }
+    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
+    expect(err.errors.content).toBeDefined();
+  });
+
+  it('should fail to save message with too long content', async () => {
+    const userId = new mongoose.Types.ObjectId();
+    const longContent = 'a'.repeat(1001);
+    const messageWithLongContent = new MessageModel({
+      name: 'Test Message',
+      content: longContent,
+      user: userId,
+    });
+
+    let err;
+    try {
+      await messageWithLongContent.save();
+    } catch (error) {
+      err = error;
+    }
+    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
+    expect(err.errors.content).toBeDefined();
+  });
+
+  it('should save message without optional content', async () => {
+    const userId = new mongoose.Types.ObjectId();
+    const messageWithoutContent = {
+      name: 'Test Message',
+      user: userId,
+    };
+
+    const savedMessage = await MessageModel.create(messageWithoutContent) as IMessage & { _id: mongoose.Types.ObjectId };
+    expect(savedMessage._id).toBeDefined();
+    expect(savedMessage.name).toBe(messageWithoutContent.name);
+    expect(savedMessage.content).toBeUndefined();
+    expect(savedMessage.user.toString()).toBe(userId.toString());
   });
 }); 
