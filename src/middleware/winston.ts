@@ -4,6 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 // Create a simple logger with basic configuration
 const logger = winston.createLogger({
   level: 'info',
+  format: winston.format.json(),
   transports: [
     new winston.transports.File({ filename: 'error.log', level: 'error' }),
     new winston.transports.File({ filename: 'combined.log' }),
@@ -12,7 +13,11 @@ const logger = winston.createLogger({
 
 // Add console transport in non-production environment
 if (process.env.NODE_ENV !== 'production') {
-  logger.add(new winston.transports.Console());
+  logger.add(
+    new winston.transports.Console({
+      format: winston.format.simple(),
+    }),
+  );
 }
 
 export const stream = {

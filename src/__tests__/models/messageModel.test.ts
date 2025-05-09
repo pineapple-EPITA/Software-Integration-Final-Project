@@ -2,14 +2,6 @@ import mongoose from 'mongoose';
 import MessageModel, { IMessage } from '../../models/messageModel';
 
 describe('Message Model Test', () => {
-  beforeAll(async () => {
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/test');
-  });
-
-  afterAll(async () => {
-    await mongoose.connection.close();
-  });
-
   beforeEach(async () => {
     await MessageModel.deleteMany({});
   });
@@ -22,7 +14,9 @@ describe('Message Model Test', () => {
       user: userId,
     };
 
-    const savedMessage = await MessageModel.create(validMessage) as IMessage & { _id: mongoose.Types.ObjectId };
+    const savedMessage = (await MessageModel.create(
+      validMessage,
+    )) as IMessage & { _id: mongoose.Types.ObjectId };
     expect(savedMessage._id).toBeDefined();
     expect(savedMessage.name).toBe(validMessage.name);
     expect(savedMessage.content).toBe(validMessage.content);
@@ -137,10 +131,12 @@ describe('Message Model Test', () => {
       user: userId,
     };
 
-    const savedMessage = await MessageModel.create(messageWithoutContent) as IMessage & { _id: mongoose.Types.ObjectId };
+    const savedMessage = (await MessageModel.create(
+      messageWithoutContent,
+    )) as IMessage & { _id: mongoose.Types.ObjectId };
     expect(savedMessage._id).toBeDefined();
     expect(savedMessage.name).toBe(messageWithoutContent.name);
     expect(savedMessage.content).toBeUndefined();
     expect(savedMessage.user.toString()).toBe(userId.toString());
   });
-}); 
+});
