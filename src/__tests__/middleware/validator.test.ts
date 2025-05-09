@@ -5,15 +5,19 @@ import { statusCodes } from '../../constants/statusCodes';
 describe('Validator Middleware', () => {
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
+  let mockStatus: jest.Mock;
+  let mockJson: jest.Mock;
   const nextFunction = jest.fn();
 
   beforeEach(() => {
     mockRequest = {
       body: {},
     };
+    mockStatus = jest.fn().mockReturnThis();
+    mockJson = jest.fn().mockReturnThis();
     mockResponse = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn().mockReturnThis(),
+      status: mockStatus,
+      json: mockJson,
     };
   });
 
@@ -94,17 +98,30 @@ describe('Validator Middleware', () => {
   });
 
   it('should handle error during validation', () => {
-    // Create a body with a property that will throw an error when accessed
-    Object.defineProperty(mockRequest.body, 'problematic', {
-      get() {
-        throw new Error('Test error');
+    // Create a mock object that will throw an error during Object.entries iteration
+    const proxyTarget = { test: 'value' };
+    const proxyBody = new Proxy(proxyTarget, {
+      get: (target, prop) => {
+        // Allow normal access to properties
+        return target[prop as keyof typeof target];
       },
+      set: (target, prop, value) => {
+        // Allow setting properties
+        target[prop as keyof typeof target] = value;
+        return true;
+      },
+      ownKeys: () => {
+        // When Object.entries tries to get keys, throw an error
+        throw new Error('Test error');
+      }
     });
+
+    mockRequest.body = proxyBody;
 
     validator(mockRequest as Request, mockResponse as Response, nextFunction);
 
-    expect(mockResponse.status).toHaveBeenCalledWith(statusCodes.badRequest);
-    expect(mockResponse.json).toHaveBeenCalledWith({
+    expect(mockStatus).toHaveBeenCalledWith(statusCodes.badRequest);
+    expect(mockJson).toHaveBeenCalledWith({
       error: 'Invalid request data',
       details: 'Test error',
     });

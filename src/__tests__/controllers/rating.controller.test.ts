@@ -1,3 +1,51 @@
+// We need to move all mocks to the top before any imports or variable definitions
+jest.mock('pg', () => {
+  const mPool = {
+    connect: jest.fn().mockResolvedValue({}),
+    query: jest.fn().mockResolvedValue({ rows: [] }),
+    on: jest.fn(),
+    end: jest.fn(),
+  };
+  return {
+    Pool: jest.fn(() => mPool),
+    types: {
+      setTypeParser: jest.fn(),
+    },
+  };
+});
+
+jest.mock('mongoose', () => ({
+  connect: jest.fn().mockResolvedValue({}),
+}));
+
+// Create mocks that will be defined before being used in the jest.mock call
+const dbMocks = {
+  query: jest.fn(),
+  connect: jest.fn().mockResolvedValue({
+    query: jest.fn().mockResolvedValue({ rows: [] }),
+    release: jest.fn()
+  })
+};
+
+jest.mock('../../boot/database/db_connect', () => dbMocks);
+
+jest.mock('../../models/ratingModel', () => {
+  const mockRating = {
+    findOne: jest.fn(),
+    find: jest.fn(),
+  };
+  const MockRatingClass = jest.fn().mockImplementation(() => ({
+    save: jest.fn().mockResolvedValue(true),
+    _id: '123',
+    rating: 4,
+    movie_id: 123,
+    email: 'test@example.com'
+  }));
+  
+  Object.assign(MockRatingClass, mockRating);
+  return MockRatingClass;
+});
+
 import { Response } from 'express';
 import { CustomRequest } from '../../types/test';
 import { addRating } from '../../controllers/rating.controller';
@@ -60,17 +108,8 @@ describe('Rating Controller', () => {
       mockRequest.params = { movieId: '123' };
       mockRequest.body = { rating: 4 };
 
-      const mockRating = {
-        _id: '123',
-        rating: 4,
-        movie_id: 123,
-        email: 'test@example.com',
-        save: jest.fn().mockResolvedValue(true)
-      };
-
-      jest.spyOn(Rating, 'findOne').mockResolvedValue(null);
-      const RatingMock = Rating as unknown as jest.Mock;
-      RatingMock.mockImplementation(() => mockRating);
+      // Mock pool query to return empty result (movie not found)
+      dbMocks.query.mockResolvedValueOnce({ rows: [] });
 
       await addRating(mockRequest as RatingTestRequest, mockResponse as Response);
 
@@ -84,6 +123,9 @@ describe('Rating Controller', () => {
       mockRequest.params = { movieId: '123' };
       mockRequest.body = { rating: 4 };
 
+      // Mock pool query to return a movie
+      dbMocks.query.mockResolvedValueOnce({ rows: [{ movie_id: 123 }] });
+
       const existingRating = {
         _id: '123',
         rating: 4,
@@ -91,7 +133,7 @@ describe('Rating Controller', () => {
         email: 'test@example.com'
       };
 
-      jest.spyOn(Rating, 'findOne').mockResolvedValue(existingRating);
+      (Rating.findOne as jest.Mock).mockResolvedValue(existingRating);
 
       await addRating(mockRequest as RatingTestRequest, mockResponse as Response);
 
@@ -105,6 +147,16 @@ describe('Rating Controller', () => {
       mockRequest.params = { movieId: '123' };
       mockRequest.body = { rating: 4 };
 
+      // Mock pool query to return a movie
+      dbMocks.query.mockResolvedValueOnce({ rows: [{ movie_id: 123 }] });
+
+      // Mock client connection and queries
+      const mockClient = {
+        query: jest.fn().mockResolvedValue({ rows: [] }),
+        release: jest.fn()
+      };
+      dbMocks.connect.mockResolvedValueOnce(mockClient);
+
       const mockRating = {
         _id: '123',
         rating: 4,
@@ -113,10 +165,8 @@ describe('Rating Controller', () => {
         save: jest.fn().mockResolvedValue(true)
       };
 
-      jest.spyOn(Rating, 'findOne').mockResolvedValue(null);
-      jest.spyOn(Rating, 'find').mockResolvedValue([mockRating]);
-      const RatingMock = Rating as unknown as jest.Mock;
-      RatingMock.mockImplementation(() => mockRating);
+      (Rating.findOne as jest.Mock).mockResolvedValue(null);
+      (Rating.find as jest.Mock).mockResolvedValue([mockRating]);
 
       await addRating(mockRequest as RatingTestRequest, mockResponse as Response);
 
@@ -130,8 +180,11 @@ describe('Rating Controller', () => {
       mockRequest.params = { movieId: '123' };
       mockRequest.body = { rating: 4 };
 
+      // Mock pool query to return a movie
+      dbMocks.query.mockResolvedValueOnce({ rows: [{ movie_id: 123 }] });
+
       const mockError = new Error('Database error');
-      jest.spyOn(Rating, 'findOne').mockRejectedValue(mockError);
+      (Rating.findOne as jest.Mock).mockRejectedValue(mockError);
 
       await addRating(mockRequest as RatingTestRequest, mockResponse as Response);
 
