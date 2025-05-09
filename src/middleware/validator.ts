@@ -1,16 +1,20 @@
 import { Request, Response, NextFunction } from 'express';
 import logger from './winston';
-import { badRequest } from '../constants/statusCodes';
+import { statusCodes } from '../constants/statusCodes';
+import { ValidationError } from '../types/error';
 
 interface RequestBody {
   [key: string]: any;
   creation_date?: string;
 }
 
-const validator = (req: Request, res: Response, next: NextFunction): void => {
-  const body = req.body as RequestBody;
+interface CustomRequest extends Request {
+  body: RequestBody;
+}
 
-  // No creation date is allowed to pass through
+const validator = (req: CustomRequest, res: Response, next: NextFunction): void => {
+  const body = req.body;
+
   if (body.creation_date) {
     delete body.creation_date;
   }
@@ -27,9 +31,53 @@ const validator = (req: Request, res: Response, next: NextFunction): void => {
 
     next();
   } catch (error) {
-    logger.error(error);
-    res.status(badRequest).json({ error: 'Bad request' });
+    logger.error(error instanceof Error ? error.stack : 'Unknown error');
+    res.status(statusCodes.badRequest).json({ 
+      error: 'Invalid request data',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
+};
+
+export const validateSignup = (req: Request): ValidationError[] => {
+  const errors: ValidationError[] = [];
+  const { username, email, password } = req.body;
+
+  if (!username) {
+    errors.push({ message: 'Username is required', field: 'username' });
+  }
+  if (!email) {
+    errors.push({ message: 'Email is required', field: 'email' });
+  }
+  if (!password) {
+    errors.push({ message: 'Password is required', field: 'password' });
+  }
+
+  return errors;
+};
+
+export const validateSignin = (req: Request): ValidationError[] => {
+  const errors: ValidationError[] = [];
+  const { email, password } = req.body;
+
+  if (!email) {
+    errors.push({ message: 'Email is required', field: 'email' });
+  }
+  if (!password) {
+    errors.push({ message: 'Password is required', field: 'password' });
+  }
+
+  return errors;
+};
+
+export const validate = (validator: (req: Request) => ValidationError[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const errors = validator(req);
+    if (errors.length > 0) {
+      return res.status(400).json({ errors });
+    }
+    next();
+  };
 };
 
 export default validator; 

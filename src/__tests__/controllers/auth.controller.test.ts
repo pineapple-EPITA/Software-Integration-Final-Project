@@ -1,9 +1,11 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
+import { Response } from 'express';
+import { CustomRequest } from '../../types/test';
 import { signup, signin, getUser, logout } from '../../controllers/auth.controller';
 import User from '../../models/userModel';
-import { MockRequest, MockResponse } from '../../types';
+import { createMockRequest, createMockResponse } from '../utils';
 
 jest.mock('bcrypt');
 jest.mock('jsonwebtoken');
@@ -14,21 +16,20 @@ interface UserData {
   email: string;
   password?: string;
   messages?: mongoose.Types.ObjectId[];
+  save?: () => Promise<UserData>;
 }
 
 describe('Auth Controller', () => {
-  let mockRequest: MockRequest;
-  let mockResponse: MockResponse;
+  let mockRequest: Partial<CustomRequest>;
+  let mockResponse: Partial<Response>;
+  let responseObject: any;
 
   beforeEach(() => {
-    mockRequest = {
-      body: {},
-      session: {},
-    };
-    mockResponse = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-    };
+    mockRequest = createMockRequest({
+      user: { email: 'test@example.com', _id: '123' }
+    });
+    mockResponse = createMockResponse();
+    responseObject = {};
     process.env.JWT_SECRET_KEY = 'test-secret-key';
   });
 
@@ -57,7 +58,7 @@ describe('Auth Controller', () => {
       const UserMock = User as unknown as jest.Mock;
       UserMock.mockImplementation(() => mockUser);
 
-      await signup(mockRequest, mockResponse);
+      await signup(mockRequest as CustomRequest, mockResponse as Response);
 
       expect(User).toHaveBeenCalledWith({
         username: userData.username,
@@ -81,11 +82,29 @@ describe('Auth Controller', () => {
 
       jest.spyOn(User, 'findOne').mockResolvedValue(userData);
 
-      await signup(mockRequest, mockResponse);
+      await signup(mockRequest as CustomRequest, mockResponse as Response);
 
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
         error: 'User already exists',
+      });
+    });
+
+    it('should handle database errors during signup', async () => {
+      const userData: UserData = {
+        username: 'testuser',
+        email: 'test@example.com',
+        password: 'password123',
+      };
+      mockRequest.body = userData;
+
+      jest.spyOn(User, 'findOne').mockRejectedValue(new Error('Database error'));
+
+      await signup(mockRequest as CustomRequest, mockResponse as Response);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(500);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: 'Error creating user',
       });
     });
   });
@@ -100,7 +119,7 @@ describe('Auth Controller', () => {
 
       jest.spyOn(User, 'findOne').mockResolvedValue(null);
 
-      await signin(mockRequest, mockResponse);
+      await signin(mockRequest as CustomRequest, mockResponse as Response);
 
       expect(mockResponse.status).toHaveBeenCalledWith(401);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -124,7 +143,7 @@ describe('Auth Controller', () => {
       jest.spyOn(User, 'findOne').mockResolvedValue(mockUser);
       (bcrypt.compareSync as jest.Mock).mockReturnValue(false);
 
-      await signin(mockRequest, mockResponse);
+      await signin(mockRequest as CustomRequest, mockResponse as Response);
 
       expect(mockResponse.status).toHaveBeenCalledWith(401);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -149,7 +168,7 @@ describe('Auth Controller', () => {
       (bcrypt.compareSync as jest.Mock).mockReturnValue(true);
       (jwt.sign as jest.Mock).mockReturnValue('test-token');
 
-      await signin(mockRequest, mockResponse);
+      await signin(mockRequest as CustomRequest, mockResponse as Response);
 
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -158,6 +177,23 @@ describe('Auth Controller', () => {
           id: mockUser._id,
           email: mockUser.email,
         },
+      });
+    });
+
+    it('should handle database errors during signin', async () => {
+      const userData: UserData = {
+        email: 'test@example.com',
+        password: 'password123',
+      };
+      mockRequest.body = userData;
+
+      jest.spyOn(User, 'findOne').mockRejectedValue(new Error('Database error'));
+
+      await signin(mockRequest as CustomRequest, mockResponse as Response);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(500);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: 'Error signing in',
       });
     });
   });
@@ -175,24 +211,37 @@ describe('Auth Controller', () => {
         select: jest.fn().mockResolvedValue(userData),
       } as any);
 
-      mockRequest.user = { id: userData._id };
+      mockRequest.user = { email: userData.email, _id: userData._id.toString() };
 
-      await getUser(mockRequest, mockResponse);
+      await getUser(mockRequest as CustomRequest, mockResponse as Response);
 
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
         user: userData,
       });
     });
+
+    it('should return error if user not found', async () => {
+      mockRequest.user = { email: 'test@example.com', _id: '123' };
+
+      jest.spyOn(User, 'findById').mockReturnValue({
+        select: jest.fn().mockResolvedValue(null),
+      } as any);
+
+      await getUser(mockRequest as CustomRequest, mockResponse as Response);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(404);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: 'User not found',
+      });
+    });
   });
 
   describe('logout', () => {
-    it('should clear session and return success message', () => {
-      mockRequest.session = { destroy: jest.fn() };
+    it('should clear session and return success message', async () => {
+      await logout(mockRequest as CustomRequest, mockResponse as Response);
 
-      logout(mockRequest, mockResponse);
-
-      expect(mockRequest.session.destroy).toHaveBeenCalled();
+      expect(mockRequest.session?.destroy).toHaveBeenCalled();
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: 'Logged out successfully',

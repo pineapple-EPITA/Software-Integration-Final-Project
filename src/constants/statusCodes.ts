@@ -1,7 +1,13 @@
-export const queryError = 500;
-export const notFound = 404;
-export const badGateway = 502;
-export const success = 200;
-export const unauthorized = 401;
-export const badRequest = 400;
-export const userAlreadyExists = 409; 
+export const statusCodes = {
+  success: 200,
+  created: 201,
+  badRequest: 400,
+  unauthorized: 401,
+  forbidden: 403,
+  notFound: 404,
+  conflict: 409,
+  queryError: 500,
+  userAlreadyExists: 409,
+} as const;
+
+export const badGateway = 502; 

@@ -1,14 +1,74 @@
-import { Pool } from 'pg';
-import dotenv from 'dotenv';
+import { Pool, PoolConfig, types } from 'pg';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+import logger from '../../middleware/winston';
+import mongoose from 'mongoose';
 
-dotenv.config();
+const envFile = `.env.${process.env.NODE_ENV || 'dev'}`;
+dotenv.config({ path: path.resolve(process.cwd(), envFile) });
 
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: parseInt(process.env.DB_PORT || '5432'),
-});
+interface DatabaseConfig extends PoolConfig {
+  user: string;
+  host: string;
+  database: string;
+  password: string;
+  port: number;
+  max: number;
+}
 
-export default pool; 
+const db_config: DatabaseConfig = {
+  user: process.env.DB_USER || '',
+  host: process.env.DB_HOST || '',
+  database: process.env.DB_NAME || '',
+  password: process.env.DB_PASSWORD || '',
+  port: 5432,
+  max: 10,
+};
+
+let db_connection: Pool;
+
+function startConnection(): void {
+  // type parsers here
+  types.setTypeParser(1082, (stringValue: string) => {
+    return stringValue; // 1082 is for date type
+  });
+
+  db_connection = new Pool(db_config);
+
+  db_connection.connect((err: Error | null, client: any) => {
+    if (!err) {
+      logger.info('PostgreSQL Connected');
+    } else {
+      logger.error('PostgreSQL Connection Failed');
+    }
+  });
+
+  db_connection.on('error', (err: Error) => {
+    logger.error('Unexpected error on idle client');
+    startConnection();
+  });
+}
+
+startConnection();
+
+export const connectToDatabase = async (): Promise<void> => {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/movies');
+    console.log('Connected to MongoDB');
+  } catch (_err) {
+    console.error('Error connecting to MongoDB');
+    process.exit(1);
+  }
+};
+
+export const connectToPostgres = async (): Promise<void> => {
+  try {
+    const _client = await db_connection.connect();
+    console.log('Connected to PostgreSQL');
+  } catch (_err) {
+    console.error('Error connecting to PostgreSQL');
+    process.exit(1);
+  }
+};
+
+export default db_connection; 

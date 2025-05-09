@@ -130,7 +130,7 @@ describe('Users Controller', () => {
         password: 'wrongpassword',
       };
 
-      (pool.query as jest.Mock).mockImplementation((query, params, callback) => {
+      (pool.query as jest.Mock).mockImplementation((_query, _params, callback) => {
         callback(null, { rows: [] });
       });
 
@@ -153,7 +153,7 @@ describe('Users Controller', () => {
         username: 'testuser',
       };
 
-      (pool.query as jest.Mock).mockImplementation((query, params, callback) => {
+      (pool.query as jest.Mock).mockImplementation((_query, _params, callback) => {
         callback(null, { rows: [mockUser] });
       });
 
@@ -181,7 +181,7 @@ describe('Users Controller', () => {
         password: 'password123',
       };
 
-      (pool.query as jest.Mock).mockImplementation((query, params, callback) => {
+      (pool.query as jest.Mock).mockImplementation((_query, _params, callback) => {
         callback(new Error('Database error'), null);
       });
 

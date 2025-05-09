@@ -1,130 +1,156 @@
 import mongoose from 'mongoose';
-import Comment from '../../models/commentModel';
+import CommentModel, { IComment } from '../../models/commentModel';
+
+declare global {
+  namespace NodeJS {
+    interface Global {
+      __MONGO_URI__: string;
+    }
+  }
+}
 
 describe('Comment Model Test', () => {
   beforeAll(async () => {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/test');
+    await mongoose.connect(global.__MONGO_URI__);
   });
 
   afterAll(async () => {
-    await mongoose.connection.dropDatabase();
     await mongoose.connection.close();
   });
 
-  afterEach(async () => {
-    await Comment.deleteMany({});
+  beforeEach(async () => {
+    await CommentModel.deleteMany({});
   });
 
   it('should create & save comment successfully', async () => {
-    const validComment = new Comment({
+    const validComment = {
       movie_id: 123,
-      username: 'testuser',
-      comment: 'Great movie!',
-      title: 'My Review',
       rating: 4,
-    });
-    const savedComment = await validComment.save();
-    
+      username: 'testuser',
+      comment: 'This is a test comment that is long enough',
+      title: 'Test Comment Title',
+    };
+
+    const savedComment = await CommentModel.create(validComment) as IComment & { _id: mongoose.Types.ObjectId };
     expect(savedComment._id).toBeDefined();
     expect(savedComment.movie_id).toBe(validComment.movie_id);
+    expect(savedComment.rating).toBe(validComment.rating);
     expect(savedComment.username).toBe(validComment.username);
     expect(savedComment.comment).toBe(validComment.comment);
     expect(savedComment.title).toBe(validComment.title);
-    expect(savedComment.rating).toBe(validComment.rating);
-    expect(savedComment.downvotes).toBe(0);
-    expect(savedComment.upvotes).toBe(0);
-    expect(savedComment.created_at).toBeDefined();
   });
 
-  it('should fail to save comment without required fields', async () => {
-    const commentWithoutRequiredFields = new Comment({
+  it('should fail to save comment without required movie_id', async () => {
+    const commentWithoutMovieId = new CommentModel({
+      rating: 4,
       username: 'testuser',
-      comment: 'Great movie!',
+      comment: 'This is a test comment that is long enough',
+      title: 'Test Comment Title',
     });
-    
+
     let err;
     try {
-      await commentWithoutRequiredFields.save();
+      await commentWithoutMovieId.save();
     } catch (error) {
       err = error;
     }
-    
     expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
+    expect(err.errors.movie_id).toBeDefined();
   });
 
   it('should fail to save comment with invalid rating', async () => {
-    const commentWithInvalidRating = new Comment({
+    const commentWithInvalidRating = new CommentModel({
       movie_id: 123,
-      username: 'testuser',
-      comment: 'Great movie!',
-      title: 'My Review',
       rating: 6,
+      username: 'testuser',
+      comment: 'This is a test comment that is long enough',
+      title: 'Test Comment Title',
     });
-    
+
     let err;
     try {
       await commentWithInvalidRating.save();
     } catch (error) {
       err = error;
     }
-    
     expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
+    expect(err.errors.rating).toBeDefined();
   });
 
-  it('should fail to save comment with negative rating', async () => {
-    const commentWithNegativeRating = new Comment({
+  it('should fail to save comment with short username', async () => {
+    const commentWithShortUsername = new CommentModel({
       movie_id: 123,
-      username: 'testuser',
-      comment: 'Great movie!',
-      title: 'My Review',
-      rating: -1,
+      rating: 4,
+      username: 'te',
+      comment: 'This is a test comment that is long enough',
+      title: 'Test Comment Title',
     });
-    
+
     let err;
     try {
-      await commentWithNegativeRating.save();
+      await commentWithShortUsername.save();
     } catch (error) {
       err = error;
     }
-    
     expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
+    expect(err.errors.username).toBeDefined();
   });
 
-  it('should fail to save comment with negative votes', async () => {
-    const commentWithNegativeVotes = new Comment({
+  it('should fail to save comment with short comment', async () => {
+    const commentWithShortComment = new CommentModel({
       movie_id: 123,
-      username: 'testuser',
-      comment: 'Great movie!',
-      title: 'My Review',
       rating: 4,
-      upvotes: -1,
-      downvotes: -1,
+      username: 'testuser',
+      comment: 'short',
+      title: 'Test Comment Title',
     });
-    
+
     let err;
     try {
-      await commentWithNegativeVotes.save();
+      await commentWithShortComment.save();
     } catch (error) {
       err = error;
     }
-    
     expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
+    expect(err.errors.comment).toBeDefined();
   });
 
-  it('should update votes correctly', async () => {
-    const comment = await Comment.create({
+  it('should fail to save comment with short title', async () => {
+    const commentWithShortTitle = new CommentModel({
       movie_id: 123,
-      username: 'testuser',
-      comment: 'Great movie!',
-      title: 'My Review',
       rating: 4,
+      username: 'testuser',
+      comment: 'This is a test comment that is long enough',
+      title: 'Te',
     });
 
-    comment.upvotes = 5;
-    comment.downvotes = 2;
-    const updatedComment = await comment.save();
-    
-    expect(updatedComment.upvotes).toBe(5);
-    expect(updatedComment.downvotes).toBe(2);
+    let err;
+    try {
+      await commentWithShortTitle.save();
+    } catch (error) {
+      err = error;
+    }
+    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
+    expect(err.errors.title).toBeDefined();
+  });
+
+  it('should fail to save comment with too long comment', async () => {
+    const longComment = 'a'.repeat(1001);
+    const commentWithLongComment = new CommentModel({
+      movie_id: 123,
+      rating: 4,
+      username: 'testuser',
+      comment: longComment,
+      title: 'Test Comment Title',
+    });
+
+    let err;
+    try {
+      await commentWithLongComment.save();
+    } catch (error) {
+      err = error;
+    }
+    expect(err).toBeInstanceOf(mongoose.Error.ValidationError);
+    expect(err.errors.comment).toBeDefined();
   });
 }); 

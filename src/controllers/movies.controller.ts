@@ -1,95 +1,186 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import type { Request } from 'express';
+import { QueryResult } from 'pg';
+import { statusCodes } from '../constants/statusCodes';
+import logger from '../middleware/winston';
 import pool from '../boot/database/db_connect';
 
-export const getMovies = async (req: Request, res: Response) => {
+interface Movie {
+  id: number;
+  title: string;
+  description: string;
+  rating?: number;
+}
+
+interface CustomRequest extends Request {
+  user?: {
+    email: string;
+    id?: string;
+  };
+  params: {
+    id?: string;
+  };
+  body: {
+    title?: string;
+    description?: string;
+  };
+}
+
+export const getMovies = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const result = await pool.query('SELECT * FROM movies');
-    res.status(200).json(result.rows);
+    const result: QueryResult<Movie> = await pool.query('SELECT * FROM movies');
+    res.status(statusCodes.success).json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching movies' });
+    logger.error(error instanceof Error ? error.stack : 'Unknown error');
+    res.status(statusCodes.queryError).json({ error: 'Error fetching movies' });
   }
 };
 
-export const getMovieById = async (req: Request, res: Response) => {
+export const getMovieById = async (req: CustomRequest, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const movieId = parseInt(id || '');
+
+  if (!id || isNaN(movieId)) {
+    res.status(statusCodes.badRequest).json({ error: 'Invalid movie ID' });
+    return;
+  }
+
   try {
-    const { id } = req.params;
-    const result = await pool.query('SELECT * FROM movies WHERE id = $1', [id]);
+    const result: QueryResult<Movie> = await pool.query('SELECT * FROM movies WHERE id = $1', [movieId]);
     
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Movie not found' });
+      res.status(statusCodes.notFound).json({ error: 'Movie not found' });
+      return;
     }
     
-    res.status(200).json(result.rows[0]);
+    res.status(statusCodes.success).json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching movie' });
+    logger.error(error instanceof Error ? error.stack : 'Unknown error');
+    res.status(statusCodes.queryError).json({ error: 'Error fetching movie' });
   }
 };
 
-export const addMovie = async (req: Request, res: Response) => {
+export const addMovie = async (req: CustomRequest, res: Response): Promise<void> => {
+  const { title, description } = req.body;
+
+  if (!title || !description) {
+    res.status(statusCodes.badRequest).json({ error: 'Title and description are required' });
+    return;
+  }
+
+  if (title.length < 3 || title.length > 100) {
+    res.status(statusCodes.badRequest).json({ error: 'Title must be between 3 and 100 characters' });
+    return;
+  }
+
+  if (description.length < 10 || description.length > 1000) {
+    res.status(statusCodes.badRequest).json({ error: 'Description must be between 10 and 1000 characters' });
+    return;
+  }
+
   try {
-    const { title, description } = req.body;
-    const result = await pool.query(
+    const result: QueryResult<Movie> = await pool.query(
       'INSERT INTO movies (title, description) VALUES ($1, $2) RETURNING *',
       [title, description]
     );
-    res.status(201).json(result.rows[0]);
+    res.status(statusCodes.created).json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: 'Error adding movie' });
+    logger.error(error instanceof Error ? error.stack : 'Unknown error');
+    res.status(statusCodes.queryError).json({ error: 'Error adding movie' });
   }
 };
 
-export const updateMovie = async (req: Request, res: Response) => {
+export const updateMovie = async (req: CustomRequest, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const { title, description } = req.body;
+  const movieId = parseInt(id || '');
+
+  if (!id || isNaN(movieId)) {
+    res.status(statusCodes.badRequest).json({ error: 'Invalid movie ID' });
+    return;
+  }
+
+  if (!title && !description) {
+    res.status(statusCodes.badRequest).json({ error: 'At least one field (title or description) is required' });
+    return;
+  }
+
+  if (title && (title.length < 3 || title.length > 100)) {
+    res.status(statusCodes.badRequest).json({ error: 'Title must be between 3 and 100 characters' });
+    return;
+  }
+
+  if (description && (description.length < 10 || description.length > 1000)) {
+    res.status(statusCodes.badRequest).json({ error: 'Description must be between 10 and 1000 characters' });
+    return;
+  }
+
   try {
-    const { id } = req.params;
-    const { title, description } = req.body;
-    const result = await pool.query(
-      'UPDATE movies SET title = $1, description = $2 WHERE id = $3 RETURNING *',
-      [title, description, id]
+    const result: QueryResult<Movie> = await pool.query(
+      'UPDATE movies SET title = COALESCE($1, title), description = COALESCE($2, description) WHERE id = $3 RETURNING *',
+      [title, description, movieId]
     );
     
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Movie not found' });
+      res.status(statusCodes.notFound).json({ error: 'Movie not found' });
+      return;
     }
     
-    res.status(200).json(result.rows[0]);
+    res.status(statusCodes.success).json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: 'Error updating movie' });
+    logger.error(error instanceof Error ? error.stack : 'Unknown error');
+    res.status(statusCodes.queryError).json({ error: 'Error updating movie' });
   }
 };
 
-export const deleteMovie = async (req: Request, res: Response) => {
+export const deleteMovie = async (req: CustomRequest, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const movieId = parseInt(id || '');
+
+  if (!id || isNaN(movieId)) {
+    res.status(statusCodes.badRequest).json({ error: 'Invalid movie ID' });
+    return;
+  }
+
   try {
-    const { id } = req.params;
-    const result = await pool.query('DELETE FROM movies WHERE id = $1 RETURNING *', [id]);
+    const result: QueryResult<Movie> = await pool.query('DELETE FROM movies WHERE id = $1 RETURNING *', [movieId]);
     
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Movie not found' });
+      res.status(statusCodes.notFound).json({ error: 'Movie not found' });
+      return;
     }
     
-    res.status(200).json({ message: 'Movie deleted successfully' });
+    res.status(statusCodes.success).json({ message: 'Movie deleted successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Error deleting movie' });
+    logger.error(error instanceof Error ? error.stack : 'Unknown error');
+    res.status(statusCodes.queryError).json({ error: 'Error deleting movie' });
   }
 };
 
-export const getTopRatedMovies = async (req: Request, res: Response) => {
+export const getTopRatedMovies = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const result = await pool.query('SELECT * FROM movies ORDER BY rating DESC LIMIT 10');
-    res.status(200).json(result.rows);
+    const result: QueryResult<Movie> = await pool.query('SELECT * FROM movies ORDER BY rating DESC LIMIT 10');
+    res.status(statusCodes.success).json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching top rated movies' });
+    logger.error(error instanceof Error ? error.stack : 'Unknown error');
+    res.status(statusCodes.queryError).json({ error: 'Error fetching top rated movies' });
   }
 };
 
-export const getSeenMovies = async (req: Request, res: Response) => {
+export const getSeenMovies = async (req: CustomRequest, res: Response): Promise<void> => {
+  if (!req.user?.email) {
+    res.status(statusCodes.unauthorized).json({ error: 'User not authenticated' });
+    return;
+  }
+
   try {
-    const { email } = req.user as { email: string };
-    const result = await pool.query(
+    const result: QueryResult<Movie> = await pool.query(
       'SELECT * FROM seen_movies S JOIN movies M ON S.movie_id = M.movie_id WHERE email = $1',
-      [email]
+      [req.user.email]
     );
-    res.status(200).json(result.rows);
+    res.status(statusCodes.success).json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching seen movies' });
+    logger.error(error instanceof Error ? error.stack : 'Unknown error');
+    res.status(statusCodes.queryError).json({ error: 'Error fetching seen movies' });
   }
 }; 
