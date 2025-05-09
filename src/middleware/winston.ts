@@ -4,7 +4,10 @@ import { Request, Response, NextFunction } from 'express';
 // Create a simple logger with basic configuration
 const logger = winston.createLogger({
   level: 'info',
-  format: winston.format.json(),
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.simple(),
+  ),
   transports: [
     new winston.transports.File({ filename: 'error.log', level: 'error' }),
     new winston.transports.File({ filename: 'combined.log' }),

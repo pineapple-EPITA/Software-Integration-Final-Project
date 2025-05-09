@@ -2,14 +2,6 @@ import mongoose from 'mongoose';
 import User from '../../models/userModel';
 
 describe('User Model Test', () => {
-  beforeAll(async () => {
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/test');
-  });
-
-  afterAll(async () => {
-    await mongoose.connection.close();
-  });
-
   beforeEach(async () => {
     await User.deleteMany({});
   });
@@ -36,7 +28,9 @@ describe('User Model Test', () => {
       err = error as mongoose.Error.ValidationError;
     }
     expect(err!).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err!.message).toBe('User validation failed: email: Path `email` is required.');
+    expect(err!.message).toBe(
+      'User validation failed: email: Path `email` is required.',
+    );
 
     try {
       await userWithoutPassword.save();
@@ -44,7 +38,9 @@ describe('User Model Test', () => {
       err = error as mongoose.Error.ValidationError;
     }
     expect(err!).toBeInstanceOf(mongoose.Error.ValidationError);
-    expect(err!.message).toBe('User validation failed: password: Path `password` is required.');
+    expect(err!.message).toBe(
+      'User validation failed: password: Path `password` is required.',
+    );
   });
 
   it('should fail to save user with invalid email format', async () => {
@@ -84,4 +80,4 @@ describe('User Model Test', () => {
     expect(err!).toBeInstanceOf(mongoose.Error.ValidationError);
     expect(err!.message).toContain('User validation failed');
   });
-}); 
+});
