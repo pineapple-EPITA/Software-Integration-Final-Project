@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node dist/index.js",
     "dev": "nodemon",
-    "build": "mkdir -p dist && cp -r src/ dist/ && find dist -name '*.ts' -exec sh -c 'for f; do js=\"${f%.ts}.js\"; echo \"// Converted from TypeScript\n$(cat \"$f\")\" > \"$js\"; sed -i \"\" \"s/\\.ts'/\\.js'/g\" \"$js\"; sed -i \"\" \"s/\\.ts\\\"/\\.js\\\"/g\" \"$js\"; rm \"$f\"; done' _ {} \\;",
+    "build": "tsc && cp src/server.js dist/",
     "build:ts": "tsc",
     "lint": "eslint --ext .js,.ts --ignore-pattern \"src/__tests__/**\" src/",
     "lint:all": "eslint --ext .js,.ts .",
