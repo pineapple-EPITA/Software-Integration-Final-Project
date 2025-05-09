@@ -177,7 +177,7 @@ export const mockResponse = (): MockResponse => {
 export const mockNext = jest.fn();
 
 export const mockErrorHandler = (_err: Error, _req: Request, res: Response, _next: NextFunction): void => {
-  console.error(_err);
+  // console.error(_err);
   res.status(500).json({ error: 'Internal Server Error' });
 };
 
@@ -237,4 +237,8 @@ export const mockServiceUnavailableError = (message: string): Error => {
   const error = new Error(message);
   error.name = 'ServiceUnavailableError';
   return error;
-}; 
+};
+
+export function logRequest(_req: Request, _res: Response): void {
+  // console.log(`[${new Date().toISOString()}] ${_req.method} ${_req.url}`);
+} 

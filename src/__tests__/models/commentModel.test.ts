@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import CommentModel, { IComment } from '../../models/commentModel';
+import CommentModel from '../../models/commentModel';
 
 describe('Comment Model Test', () => {
   beforeAll(async () => {

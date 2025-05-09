@@ -1,11 +1,11 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import validator from '../../middleware/validator';
 import { statusCodes } from '../../constants/statusCodes';
 
 describe('Validator Middleware', () => {
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
-  let nextFunction: NextFunction = jest.fn();
+  const nextFunction = jest.fn();
 
   beforeEach(() => {
     mockRequest = {
