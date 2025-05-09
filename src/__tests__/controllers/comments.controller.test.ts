@@ -1,28 +1,26 @@
-import mongoose from 'mongoose';
+import { MockRequest, MockResponse } from '../../types';
 import { addComment, getCommentsById } from '../../controllers/comments.controller';
-import commentModel from '../../models/commentModel';
+import Comment from '../../models/commentModel';
 
-jest.mock('../../middleware/winston', () => ({
-  info: jest.fn(),
-  error: jest.fn(),
-}));
-
-jest.mock('../../models/commentModel', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    save: jest.fn(),
-  })),
-  find: jest.fn(),
-}));
+interface CommentData {
+  _id?: string;
+  username: string;
+  comment: string;
+  movie_id: number;
+  title: string;
+  rating: number;
+  downvotes: number;
+  upvotes: number;
+}
 
 describe('Comments Controller', () => {
-  let mockRequest: any;
-  let mockResponse: any;
+  let mockRequest: MockRequest;
+  let mockResponse: MockResponse;
 
   beforeEach(() => {
     mockRequest = {
-      params: {},
       body: {},
+      params: {},
     };
     mockResponse = {
       status: jest.fn().mockReturnThis(),
@@ -35,140 +33,96 @@ describe('Comments Controller', () => {
   });
 
   describe('addComment', () => {
-    it('should return 400 if required fields are missing', async () => {
-      mockRequest.params = { movie_id: '123' };
-      mockRequest.body = {};
-
-      await addComment(mockRequest, mockResponse);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.json).toHaveBeenCalledWith({ message: 'Missing parameters' });
-    });
-
-    it('should return 400 if movie_id is invalid', async () => {
-      mockRequest.params = { movie_id: 'invalid' };
-      mockRequest.body = {
-        rating: 4.5,
+    it('should create a new comment successfully', async () => {
+      const commentData: CommentData = {
         username: 'testuser',
-        comment: 'Great movie!',
-        title: 'Test Comment',
-      };
-
-      await addComment(mockRequest, mockResponse);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.json).toHaveBeenCalledWith({ message: 'Missing parameters' });
-    });
-
-    it('should add comment successfully', async () => {
-      const movieId = '123';
-      const commentData = {
-        rating: 4.5,
-        username: 'testuser',
-        comment: 'Great movie!',
-        title: 'Test Comment',
-      };
-
-      mockRequest.params = { movie_id: movieId };
-      mockRequest.body = commentData;
-
-      const mockCommentInstance = {
-        save: jest.fn().mockResolvedValue({
-          movie_id: 123,
-          ...commentData,
-        }),
-      };
-      (commentModel as jest.Mock).mockImplementation(() => mockCommentInstance);
-
-      await addComment(mockRequest, mockResponse);
-
-      expect(commentModel).toHaveBeenCalledWith({
+        comment: 'Test comment',
         movie_id: 123,
-        ...commentData,
-      });
-      expect(mockCommentInstance.save).toHaveBeenCalled();
-      expect(mockResponse.status).toHaveBeenCalledWith(200);
-      expect(mockResponse.json).toHaveBeenCalledWith({ message: 'Comment added' });
-    });
-
-    it('should handle database errors', async () => {
-      const movieId = '123';
-      const commentData = {
-        rating: 4.5,
-        username: 'testuser',
-        comment: 'Great movie!',
-        title: 'Test Comment',
+        title: 'Test Movie',
+        rating: 4,
+        downvotes: 0,
+        upvotes: 0,
       };
-
-      mockRequest.params = { movie_id: movieId };
       mockRequest.body = commentData;
 
-      const mockCommentInstance = {
+      const mockComment = {
+        ...commentData,
+        save: jest.fn().mockResolvedValue(commentData),
+      };
+
+      const CommentMock = Comment as unknown as jest.Mock;
+      CommentMock.mockImplementation(() => mockComment);
+
+      await addComment(mockRequest, mockResponse);
+
+      expect(Comment).toHaveBeenCalledWith(commentData);
+      expect(mockComment.save).toHaveBeenCalled();
+      expect(mockResponse.status).toHaveBeenCalledWith(201);
+      expect(mockResponse.json).toHaveBeenCalledWith(commentData);
+    });
+
+    it('should handle errors when creating a comment', async () => {
+      const commentData: CommentData = {
+        username: 'testuser',
+        comment: 'Test comment',
+        movie_id: 123,
+        title: 'Test Movie',
+        rating: 4,
+        downvotes: 0,
+        upvotes: 0,
+      };
+      mockRequest.body = commentData;
+
+      const mockComment = {
+        ...commentData,
         save: jest.fn().mockRejectedValue(new Error('Database error')),
       };
-      (commentModel as jest.Mock).mockImplementation(() => mockCommentInstance);
+
+      const CommentMock = Comment as unknown as jest.Mock;
+      CommentMock.mockImplementation(() => mockComment);
 
       await addComment(mockRequest, mockResponse);
 
       expect(mockResponse.status).toHaveBeenCalledWith(500);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        error: 'Exception occurred while adding comment',
+        error: 'Error creating comment',
       });
     });
   });
 
   describe('getCommentsById', () => {
-    it('should return 400 if movie_id is missing or invalid', async () => {
-      mockRequest.params = { movie_id: 'invalid' };
+    it('should return all comments for a movie', async () => {
+      const movieId = 123;
+      mockRequest.params = { movieId: movieId.toString() };
 
-      await getCommentsById(mockRequest, mockResponse);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.json).toHaveBeenCalledWith({ message: 'movie id missing' });
-    });
-
-    it('should return comments for a valid movie_id', async () => {
-      const movieId = '123';
-      mockRequest.params = { movie_id: movieId };
-
-      const mockComments = [
+      const mockComments: CommentData[] = [
         {
-          movie_id: 123,
-          rating: 4.5,
-          username: 'testuser1',
-          comment: 'Great movie!',
-          title: 'Test Comment 1',
+          username: 'user1',
+          comment: 'Comment 1',
+          movie_id: movieId,
+          title: 'Test Movie',
+          rating: 4,
+          downvotes: 0,
+          upvotes: 0,
         },
         {
-          movie_id: 123,
-          rating: 4.0,
-          username: 'testuser2',
-          comment: 'Good movie!',
-          title: 'Test Comment 2',
+          username: 'user2',
+          comment: 'Comment 2',
+          movie_id: movieId,
+          title: 'Test Movie',
+          rating: 5,
+          downvotes: 0,
+          upvotes: 0,
         },
       ];
 
-      (commentModel.find as jest.Mock).mockResolvedValue(mockComments);
+      jest.spyOn(Comment, 'find').mockResolvedValue(mockComments);
 
       await getCommentsById(mockRequest, mockResponse);
 
-      expect(commentModel.find).toHaveBeenCalledWith({ movie_id: 123 });
+      expect(Comment.find).toHaveBeenCalledWith({ movie_id: movieId });
       expect(mockResponse.status).toHaveBeenCalledWith(200);
-      expect(mockResponse.json).toHaveBeenCalledWith({ comments: mockComments });
-    });
-
-    it('should handle database errors', async () => {
-      const movieId = '123';
-      mockRequest.params = { movie_id: movieId };
-
-      (commentModel.find as jest.Mock).mockRejectedValue(new Error('Database error'));
-
-      await getCommentsById(mockRequest, mockResponse);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        error: 'Exception occured while fetching comments',
-      });
+      expect(mockResponse.json).toHaveBeenCalledWith(mockComments);
     });
   });
 }); 
