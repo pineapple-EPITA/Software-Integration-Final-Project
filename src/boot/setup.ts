@@ -74,7 +74,7 @@ const registerCoreMiddleWare = (): void => {
     app.use(notFound);
 
     logger.http('Done registering all middlewares');
-  } catch (err) {
+  } catch (_err) {
     logger.error('Error thrown while executing registerCoreMiddleWare');
     process.exit(1);
   }
@@ -84,8 +84,8 @@ const registerCoreMiddleWare = (): void => {
 const handleError = (): void => {
   // 'process' is a built it object in nodejs
   // if uncaught exceptoin, then we execute this
-  process.on('uncaughtException', (err: Error) => {
-    logger.error(`UNCAUGHT_EXCEPTION OCCURED : ${JSON.stringify(err.stack)}`);
+  process.on('uncaughtException', (_err: Error) => {
+    logger.error(`UNCAUGHT_EXCEPTION OCCURED : ${JSON.stringify(_err.stack)}`);
   });
 };
 
@@ -101,15 +101,15 @@ const startApp = (): void => {
 
     // exit on uncaught exception
     handleError();
-  } catch (err) {
+  } catch (_err) {
     logger.error(
       `startup :: Error while booting the applicaiton ${JSON.stringify(
-        err,
+        _err,
         undefined,
         2,
       )}`,
     );
-    throw err;
+    throw _err;
   }
 };
 

@@ -11,7 +11,8 @@ export default [
       'dist/**/*',
       'node_modules/**/*',
       'jest.config.js',
-      'commitlint.config.cjs'
+      'commitlint.config.cjs',
+      'src/types/**/*.d.ts' // Completely ignore .d.ts files in types directory
     ]
   },
   js.configs.recommended,
@@ -58,6 +59,7 @@ export default [
       '@typescript-eslint/no-unused-vars': ['warn', {
         'argsIgnorePattern': '^_',
         'varsIgnorePattern': '^_',
+        'caughtErrorsIgnorePattern': '^_',
         'ignoreRestSiblings': true
       }],
       'no-console': 'warn',

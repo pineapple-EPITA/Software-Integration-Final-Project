@@ -35,15 +35,15 @@ function startConnection(): void {
 
   db_connection = new Pool(db_config);
 
-  db_connection.connect((err: Error | null, client: any) => {
-    if (!err) {
+  db_connection.connect((_err: Error | null, _client: any) => {
+    if (!_err) {
       logger.info('PostgreSQL Connected');
     } else {
       logger.error('PostgreSQL Connection Failed');
     }
   });
 
-  db_connection.on('error', (err: Error) => {
+  db_connection.on('error', (_err: Error) => {
     logger.error('Unexpected error on idle client');
     startConnection();
   });
@@ -54,9 +54,10 @@ startConnection();
 export const connectToDatabase = async (): Promise<void> => {
   try {
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/movies');
-    console.log('Connected to MongoDB');
+    logger.info('Connected to MongoDB');
   } catch (_err) {
-    console.error('Error connecting to MongoDB');
+    // Error parameter is required by try/catch but we only need to log a generic message
+    logger.error('Error connecting to MongoDB');
     process.exit(1);
   }
 };
@@ -64,9 +65,10 @@ export const connectToDatabase = async (): Promise<void> => {
 export const connectToPostgres = async (): Promise<void> => {
   try {
     const _client = await db_connection.connect();
-    console.log('Connected to PostgreSQL');
+    logger.info('Connected to PostgreSQL');
   } catch (_err) {
-    console.error('Error connecting to PostgreSQL');
+    // Error parameter is required by try/catch but we only need to log a generic message
+    logger.error('Error connecting to PostgreSQL');
     process.exit(1);
   }
 };

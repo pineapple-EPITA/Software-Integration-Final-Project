@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import RatingModel, { IRating } from '../../models/ratingModel';
+import RatingModel from '../../models/ratingModel';
 
 describe('Rating Model Test', () => {
   beforeAll(async () => {
