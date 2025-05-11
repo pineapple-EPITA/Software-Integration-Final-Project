@@ -113,4 +113,4 @@ const startApp = (): void => {
   }
 };
 
-export { startApp }; 
+export { startApp, app };
