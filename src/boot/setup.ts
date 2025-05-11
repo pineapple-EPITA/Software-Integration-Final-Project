@@ -25,16 +25,23 @@ const PORT = process.env.PORT || 8080;
 const MONGO_URI = process.env.MONGO_URI;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'default_secret';
 
-const app: Application = express();
 const ENV = process.env.NODE_ENV || 'dev';
 dotenv.config({ path: path.resolve(__dirname, `../../.env.${ENV}`) });
 
-try {
-  mongoose.connect(MONGO_URI as string);
-  logger.info(`MongoDB Connected to ${MONGO_URI}`);
-} catch (error) {
-  logger.error('Error connecting to DB: ' + error);
-}
+const app: Application = express();
+
+const connectMongo = async () => {
+  if (MONGO_URI && process.env.NODE_ENV !== 'test') {
+    try {
+      await mongoose.connect(MONGO_URI);
+      logger.info(`MongoDB Connected to ${MONGO_URI}`);
+    } catch (error) {
+      logger.error('Error connecting to DB: ' + error);
+    }
+  } else {
+    logger.warn('Skipping MongoDB connection (likely running in test mode)');
+  }
+};
 
 // MIDDLEWARE
 const registerCoreMiddleWare = (): void => {
@@ -73,10 +80,10 @@ const registerCoreMiddleWare = (): void => {
     // 404 handling for not found
     app.use(notFound);
 
-    logger.http('Done registering all middlewares');
+    logger.info('Done registering all middlewares');
   } catch (_err) {
     logger.error('Error thrown while executing registerCoreMiddleWare');
-    process.exit(1);
+    throw _err;
   }
 };
 
@@ -89,9 +96,17 @@ const handleError = (): void => {
   });
 };
 
+const createApp = async (): Promise<Application> => {
+  await connectMongo(); // only connects if not in test
+  registerCoreMiddleWare(); // apply middleware + routes
+  return app;
+};
+
 // start applicatoin
-const startApp = (): void => {
+const startApp = async (): Promise<void> => {
   try {
+    await connectMongo();
+
     // register core application level middleware
     registerCoreMiddleWare();
 
@@ -113,4 +128,4 @@ const startApp = (): void => {
   }
 };
 
-export { startApp, app };
+export { startApp, createApp };
