@@ -25,7 +25,7 @@
   "ts-node": {
     "files": true
   },
-  "exclude": ["node_modules", "dist", "src/__tests__/**/*"],
-  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules"],
+  "include": ["src/**/*.ts", "src/__tests__/**/*"],
   "files": ["src/types/express.d.ts"]
 }
