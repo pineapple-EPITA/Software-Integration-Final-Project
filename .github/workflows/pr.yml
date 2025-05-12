@@ -7,7 +7,7 @@ permissions:
 
 on:
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main ]
 
 jobs:
   test-and-lint:
