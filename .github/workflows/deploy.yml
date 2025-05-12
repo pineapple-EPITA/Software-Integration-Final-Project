@@ -1,11 +1,11 @@
-name: Deploy
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [main, develop]
 
 jobs:
-  test-build-deploy:
+  build-test-deploy:
     runs-on: ubuntu-latest
 
     strategy:
@@ -13,48 +13,129 @@ jobs:
         node-version: [18.x]
 
     steps:
-    - uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
 
-    - name: Install dependencies
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Run linting
-      run: npm run lint
+      - name: Lint code
+        run: npm run lint
 
-    - name: Run tests
-      env:
-        NODE_ENV: test
-        MONGO_URI: ${{ secrets.MONGO_URI_TEST }}
-        DB_USER: ${{ secrets.DB_USER_TEST }}
-        DB_PASSWORD: ${{ secrets.DB_PASSWORD_TEST }}
-        DB_HOST: ${{ secrets.DB_HOST_TEST }}
-        DB_NAME: ${{ secrets.DB_NAME_TEST }}
-        SESSION_SECRET: ${{ secrets.SESSION_SECRET_TEST }}
-      run: npm test
+      - name: Run tests
+        env:
+          NODE_ENV: test
+          MONGO_URI: ${{ secrets.MONGO_URI_TEST }}
+          DB_USER: ${{ secrets.DB_USER_TEST }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD_TEST }}
+          DB_HOST: ${{ secrets.DB_HOST_TEST }}
+          DB_NAME: ${{ secrets.DB_NAME_TEST }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET_TEST }}
+        run: npm test
 
-    - name: Build
-      run: npm run build
+      - name: Build project
+        run: npm run build
 
-    - name: Verify build
-      run: |
-        if [ ! -d "dist" ]; then
-          echo "Build failed: dist directory not found"
-          exit 1
-        fi
-        if [ ! -f "dist/server.js" ]; then
-          echo "Build failed: server.js not found in dist directory"
-          exit 1
-        fi
+      - name: Verify build output
+        run: |
+          test -d dist || (echo "dist/ directory not found!" && exit 1)
+          test -f dist/server.js || (echo "dist/server.js not found!" && exit 1)
+          echo "Build verified successfully."
 
-    - name: Check for build artifacts
-      run: |
-        echo "Build artifacts:"
-        ls -la dist/
-        echo "Checking server.js content:"
-        head -n 5 dist/server.js
+      - name: Deploy to EC2 (Production)
+        if: github.ref == 'refs/heads/main'
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST_PROD }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          NODE_ENV: production
+          MONGO_URI: ${{ secrets.MONGO_URI_PROD }}
+          DB_USER: ${{ secrets.DB_USER_PROD }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD_PROD }}
+          DB_HOST: ${{ secrets.DB_HOST_PROD }}
+          DB_NAME: ${{ secrets.DB_NAME_PROD }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET_PROD }}
+        run: |
+          echo "Starting production deployment to EC2..."
+          
+          # Write the deployment SSH key to a file
+          echo "$DEPLOY_KEY" > deploy_key.pem
+          chmod 600 deploy_key.pem
+          
+          # Create env file for production
+          cat > .env.production << EOF
+          NODE_ENV=production
+          MONGO_URI=$MONGO_URI
+          DB_USER=$DB_USER
+          DB_PASSWORD=$DB_PASSWORD
+          DB_HOST=$DB_HOST
+          DB_NAME=$DB_NAME
+          SESSION_SECRET=$SESSION_SECRET
+          EOF
+          
+          # Copy build and env file to EC2
+          scp -i deploy_key.pem -o StrictHostKeyChecking=no -r dist .env.production $EC2_USER@$EC2_HOST:~/app/
+          
+          # SSH into the instance and restart the service
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "
+            cd ~/app &&
+            npm ci --production &&
+            pm2 restart server || pm2 start dist/server.js --name server
+          "
+          
+          # Clean up
+          rm deploy_key.pem .env.production
+          
+          echo "Production deployment completed."
+      
+      - name: Deploy to EC2 (Development)
+        if: github.ref == 'refs/heads/develop'
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST_DEV }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          NODE_ENV: development
+          MONGO_URI: ${{ secrets.MONGO_URI_DEV }}
+          DB_USER: ${{ secrets.DB_USER_DEV }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD_DEV }}
+          DB_HOST: ${{ secrets.DB_HOST_DEV }}
+          DB_NAME: ${{ secrets.DB_NAME_DEV }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET_DEV }}
+        run: |
+          echo "Starting development deployment to EC2..."
+          
+          # Write the deployment SSH key to a file
+          echo "$DEPLOY_KEY" > deploy_key.pem
+          chmod 600 deploy_key.pem
+          
+          # Create env file for development
+          cat > .env.development << EOF
+          NODE_ENV=development
+          MONGO_URI=$MONGO_URI
+          DB_USER=$DB_USER
+          DB_PASSWORD=$DB_PASSWORD
+          DB_HOST=$DB_HOST
+          DB_NAME=$DB_NAME
+          SESSION_SECRET=$SESSION_SECRET
+          EOF
+          
+          # Copy build and env file to EC2
+          scp -i deploy_key.pem -o StrictHostKeyChecking=no -r dist .env.development $EC2_USER@$EC2_HOST:~/app/
+          
+          # SSH into the instance and restart the service
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "
+            cd ~/app &&
+            npm ci --production &&
+            pm2 restart dev-server || pm2 start dist/server.js --name dev-server
+          "
+          
+          # Clean up
+          rm deploy_key.pem .env.development
+          
+          echo "Development deployment completed."

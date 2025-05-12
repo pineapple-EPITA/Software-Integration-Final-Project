@@ -1,31 +1,29 @@
 {
   "compilerOptions": {
+    "incremental": false,
     "target": "es2016",
     "lib": ["es2016", "es2017", "dom"],
     "module": "commonjs",
-    "rootDir": ".",
-    "baseUrl": ".",
+    "rootDir": "./",
+    "baseUrl": "./",
     "resolveJsonModule": true,
     "declaration": true,
     "sourceMap": true,
-    "outDir": "./dist",
+    "outDir": "dist",
+    "removeComments": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "removeComments": true,
-    "strict": false,
-    "noImplicitAny": false,
-    "skipLibCheck": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "isolatedModules": true,
-    "emitDeclarationOnly": false
+    "skipLibCheck": true
   },
   "ts-node": {
     "files": true
   },
-  "exclude": ["node_modules", "dist", "src/__tests__/**/*"],
+  "exclude": ["node_modules", "dist"],
   "include": ["src/**/*.ts"],
   "files": ["src/types/express.d.ts"]
 }

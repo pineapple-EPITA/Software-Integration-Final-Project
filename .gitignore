@@ -4,4 +4,9 @@ dist/
 coverage/
 .vscodes
 .DS_Store
+
+# Ignore all environment files
 .env
+.env.*
+!.env.example
+!.env.template

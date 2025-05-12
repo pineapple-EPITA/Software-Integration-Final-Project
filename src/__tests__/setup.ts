@@ -17,8 +17,14 @@ jest.mock('pg', () => {
     connect: jest.fn(),
     query: jest.fn(),
     end: jest.fn(),
+    on: jest.fn(),
   };
-  return { Pool: jest.fn(() => mockPool) };
+  return {
+    Pool: jest.fn(() => mockPool),
+    types: {
+      setTypeParser: jest.fn(),
+    },
+  };
 });
 
 // Mock winston logger

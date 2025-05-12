@@ -1,0 +1,36 @@
+{
+  "info": {
+    "_postman_id": "173cf7c0-45ca-4771-9a6d-84203dcf9ee2",
+    "name": "Comments Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "38366651"
+  },
+  "item": [
+    {
+      "name": "Get Comments",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/comments/{{movieId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["comments", "{{movieId}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Add Comments",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/comments/{{movieId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["comments", "{{movieId}}"]
+        }
+      },
+      "response": []
+    }
+  ]
+}
