@@ -1,0 +1,84 @@
+{
+  "info": {
+    "_postman_id": "7da23f1b-276a-4be1-a8fa-4a35725572f0",
+    "name": "Profile Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "38366651"
+  },
+  "item": [
+    {
+      "name": "Edit Password",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status is 200 or 400\", function () {",
+              "    pm.expect([200, 400]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    pm.test(\"Password updated message\", function () {",
+              "        const json = pm.response.json();",
+              "        pm.expect(json.message).to.eql(\"Password updated\");",
+              "    });",
+              "} else if (pm.response.code === 400) {",
+              "    const json = pm.response.json();",
+              "    pm.test(\"Proper error message returned\", function () {",
+              "        pm.expect(json).to.have.property(\"message\");",
+              "        pm.expect(json.message.length).to.be.above(0);",
+              "    });",
+              "}",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/profile/",
+          "host": ["{{baseUrl}}"],
+          "path": ["profile", ""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Logout",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check status code\", function () {",
+              "    pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              "",
+              "pm.test(\"Message is 'Disconnected'\", function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.message).to.eql(\"Disconnected\");",
+              "});",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/profile/",
+          "host": ["{{baseUrl}}"],
+          "path": ["profile", ""]
+        }
+      },
+      "response": []
+    }
+  ]
+}

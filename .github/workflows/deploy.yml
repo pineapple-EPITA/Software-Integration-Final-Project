@@ -2,7 +2,11 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   build-test-deploy:

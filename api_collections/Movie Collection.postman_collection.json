@@ -1,0 +1,129 @@
+{
+  "info": {
+    "_postman_id": "6e7c4699-9296-460f-983b-7fc087aaee34",
+    "name": "Movie Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "38366651"
+  },
+  "item": [
+    {
+      "name": "Get Movies",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check status code\", function () {",
+              "    pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/movies/",
+          "host": ["{{baseUrl}}"],
+          "path": ["movies", ""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Top Movies",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check status code\", function () {",
+              "    pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              "",
+              "pm.test(\"Response is an array\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.be.an(\"array\");",
+              "});",
+              "",
+              "pm.test(\"Movies are sorted by rating descending\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    for (let i = 1; i < jsonData.length; i++) {",
+              "        pm.expect(jsonData[i - 1].rating).to.be.at.least(jsonData[i].rating);",
+              "    }",
+              "});",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/movies/top",
+          "host": ["{{baseUrl}}"],
+          "path": ["movies", "top"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Seen Movie",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200 or 401\", function () {",
+              "    pm.expect([200, 401]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    const data = pm.response.json();",
+              "    ",
+              "    pm.test(\"Response is array\", function () {",
+              "        pm.expect(data).to.be.an(\"array\");",
+              "    });",
+              "",
+              "    pm.test(\"Each item has required movie fields\", function () {",
+              "        if (data.length > 0) {",
+              "            const movie = data[0];",
+              "            pm.expect(movie).to.have.property(\"id\");",
+              "            pm.expect(movie).to.have.property(\"title\");",
+              "            pm.expect(movie).to.have.property(\"description\");",
+              "        }",
+              "    });",
+              "} else if (pm.response.code === 401) {",
+              "    pm.test(\"Unauthorized error message\", function () {",
+              "        const err = pm.response.json();",
+              "        pm.expect(err).to.have.property(\"error\");",
+              "        pm.expect(err.error).to.equal(\"User not authenticated\");",
+              "    });",
+              "}",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/movies/me",
+          "host": ["{{baseUrl}}"],
+          "path": ["movies", "me"]
+        }
+      },
+      "response": []
+    }
+  ]
+}
