@@ -1,0 +1,173 @@
+{
+  "info": {
+    "_postman_id": "3c9fe6d9-c266-4276-89c4-6868d0401882",
+    "name": "Messages Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "38366651"
+  },
+  "item": [
+    {
+      "name": "Get Messages",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check status code\", function () {",
+              "    pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              "",
+              "pm.test(\"Response is an array\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.be.an('array');",
+              "});",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/messages/",
+          "host": ["{{baseUrl}}"],
+          "path": ["messages", ""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Message By Id",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check status code\", function () {",
+              "    pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              "",
+              "pm.test(\"Message has name and user\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property(\"name\");",
+              "    pm.expect(jsonData).to.have.property(\"user\");",
+              "});",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/messages/{{messageId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["messages", "{{messageId}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Add Messages",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check status code\", function () {",
+              "    pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              "",
+              "pm.test(\"Message is returned with ID\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property(\"_id\");",
+              "    pm.environment.set(\"messageId\", jsonData._id);",
+              "});",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/messages/add/message",
+          "host": ["{{baseUrl}}"],
+          "path": ["messages", "add", "message"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Edit Message",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check status code\", function () {",
+              "    pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              "",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/messages/edit/{{messageId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["messages", "edit", "{{messageId}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Delete Message",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check status code\", function () {",
+              "    pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              "",
+              "pm.test(\"Deletion confirmation message\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.message).to.eql(\"Message deleted\");",
+              "});",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/messages/delete/{{messageId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["messages", "delete", "{{messageId}}"]
+        }
+      },
+      "response": []
+    }
+  ]
+}

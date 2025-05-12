@@ -1,0 +1,53 @@
+{
+  "info": {
+    "_postman_id": "001a8e3d-4f14-4af5-9b8c-e89284f6821a",
+    "name": "Rating Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "38366651"
+  },
+  "item": [
+    {
+      "name": "Add Rating",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status is 200, 400, or 404\", function () {",
+              "    pm.expect([200, 400, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    pm.test(\"Rating added successfully\", function () {",
+              "        const json = pm.response.json();",
+              "        pm.expect(json.message).to.eql(\"Rating added successfully\");",
+              "    });",
+              "}",
+              "",
+              "if (pm.response.code === 400 || pm.response.code === 404) {",
+              "    const json = pm.response.json();",
+              "    pm.test(\"Proper error message exists\", function () {",
+              "        pm.expect(json).to.have.property(\"error\");",
+              "        pm.expect(json.error.length).to.be.above(0);",
+              "    });",
+              "}",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/ratings/{{movieId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["ratings", "{{movieId}}"]
+        }
+      },
+      "response": []
+    }
+  ]
+}
